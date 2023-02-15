@@ -65,7 +65,7 @@ report.sigma <- FALSE
 # SNR <- 16
 # sparsity <- 2 # 4 in other set-up
 
-B.vec <- c(5) # c(1, (1:5) * 10) # number of splits
+B.vec <- c(1) # c(1, (1:5) * 10) # number of splits
 frac.vec <- c(0.5, 0.75) # selection fraction
 nsim <- 10
 ntasks <- nsim
@@ -167,33 +167,46 @@ mainFunc <- function() {
         model.size <- apply(mcr[[1]]$sel.models, 1, sum)
         model.size[model.size == 0]  <- 1 # if no variable is selected, p-values are 1
         # ommit the clipping to calculate adjusted power
-        # pcarve.fwer <- pmin(pcarve.nofwer * model.size, 1)
-        # psplit.fwer <- pmin(psplit.nofwer * model.size, 1)
-        pcarve.fwer <- pcarve.nofwer * model.size
-        psplit.fwer <- psplit.nofwer * model.size
+        # 15/2/23 JMH/VK change from below to cap as in Meinshausen 2.1
+        if (B > 1) {
+          pcarve.fwer <- pmin(pcarve.nofwer * model.size, 1)
+          psplit.fwer <- pmin(psplit.nofwer * model.size, 1)
+        }
+        else {
+          pcarve.fwer <- pcarve.nofwer * model.size
+          psplit.fwer <- psplit.nofwer * model.size
+        }
+        # pcarve.fwer <- pcarve.nofwer * model.size
+        # psplit.fwer <- psplit.nofwer * model.size
         c100 <- c100try$value
         pc100.nofwer <- c100$pval.corr
         model.size100 <- sum(c100$sel.models)
         model.size100[model.size100 == 0]  <- 1
         # ommit the clipping to calculate adjusted power
-        # pc100.fwer <- pmin(pc100.nofwer * model.size100, 1)
-        pc100.fwer <- pc100.nofwer * model.size100
-        browser()
+        # 15/2/23 JMH/VK change from below to cap as in Meinshausen 2.1
+        if (B > 1) {
+          pc100.fwer <- pmin(pc100.nofwer * model.size100, 1)
+        }
+        else {
+          pc100.fwer <- pc100.nofwer * model.size100
+        }
+        # pc100.fwer <- pc100.nofwer * model.size100
         for (B in B.vec) {
           if (B > 1) {
             use <- 1:B
+            # 15/2/23 JMH/VK set cutof = TRUE for B > 1 as in Meinshausen 2.3
             pvals.aggregated <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                round(seq(ceiling(0.05 * B)/B, 1, by = 1/B), 2), cutoff = FALSE)
+                                                round(seq(ceiling(0.05 * B)/B, 1, by = 1/B), 2), cutoff = TRUE)
             pvals.aggregated2 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                 round(seq(ceiling(0.3 * B)/B, 1, by = 1/B), 2), cutoff = FALSE)
+                                                 round(seq(ceiling(0.3 * B)/B, 1, by = 1/B), 2), cutoff = TRUE)
             pvals.aggregated3 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                 round(ceiling(0.05 * B)/B, 2), cutoff = FALSE)
+                                                 round(ceiling(0.05 * B)/B, 2), cutoff = TRUE)
             pvals.aggregated4 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                 round(ceiling(0.3 * B)/B, 2), cutoff = FALSE)
+                                                 round(ceiling(0.3 * B)/B, 2), cutoff = TRUE)
           } else {
-            print("pvals aggregated")
+            # 15/2/23 JMH/VK set cutof = TRUE for B > 1 as in Meinshausen 2.3
+            browser()
             pvals.aggregated <- list(pcarve.nofwer[1, ], pcarve.fwer[1, ], psplit.nofwer[1, ], psplit.fwer[1, ])
-            print(pvals.aggregated)
           }
           
           run.res <- vector(length = 0) # store important quantities

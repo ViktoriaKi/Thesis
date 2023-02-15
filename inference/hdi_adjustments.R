@@ -1448,7 +1448,8 @@ pval.aggregator <- function(pval.list, gamma, cutoff = TRUE) {
     p <- dim(pvals)[2]
     pvals.current <- numeric(p)
     for (j in 1:p) {
-      quant.gamma <- quantile(pvals[, j], gamma, na.rm = TRUE, type = 3) / gamma
+      # 15/2/23 JMH/VK add pmin to cap at 1 as in Meinshausen 2.2
+      quant.gamma <- pmin(quantile(pvals[, j], gamma, na.rm = TRUE, type = 3) / gamma, 1)
       penalty <- if (length(gamma) > 1) 
         (1 - log(min(gamma)))
       else 1
