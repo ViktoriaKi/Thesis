@@ -1,0 +1,8 @@
+scalreg-package	scalreg-package
+lse	scalreg-internal
+predict.scalreg	predict.scalreg
+print.scalreg	print.scalreg
+scalreg	scalreg
+slassoEst	scalreg-internal
+slassoInv	scalreg-internal
+sp500	sp500

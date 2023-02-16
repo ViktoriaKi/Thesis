@@ -1,0 +1,7 @@
+export(MCMC, MCMC.parallel, MCMC.add.samples, convert.to.coda)
+import(Matrix)
+import(parallel)
+import(coda)
+
+importFrom("stats", "rnorm", "runif", "rt")
+importFrom("utils", "setTxtProgressBar", "txtProgressBar")

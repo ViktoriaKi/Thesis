@@ -1,0 +1,31 @@
+boot.lasso.proj         P-values based on the bootstrapped lasso
+                        projection method
+clusterGroupBound       Hierarchical structure group tests in linear
+                        model
+fdr.adjust              Function to calculate FDR adjusted p-values
+glm.pval                Function to calculate p-values for a
+                        generalized linear model.
+groupBound              Lower bound on the l1-norm of groups of
+                        regression variables
+hdi                     Function to perform inference in
+                        high-dimensional (generalized) linear models
+hdi-package             hdi
+lasso.cv                Select Predictors via (10-fold)
+                        Cross-Validation of the Lasso
+lasso.firstq            Determine the first q Predictors in the Lasso
+                        Path
+lasso.proj              P-values based on lasso projection method
+lm.ci                   Function to calculate confidence intervals for
+                        ordinary multiple linear regression.
+lm.pval                 Function to calculate p-values for ordinary
+                        multiple linear regression.
+multi.split             Calculate P-values Based on Multi-Splitting
+                        Approach
+plot.clusterGroupBound
+                        Plot output of hierarchical testing of groups
+                        of variables
+rXb                     Generate Data Design Matrix X and Coefficient
+                        Vector beta
+riboflavin              Riboflavin data set
+ridge.proj              P-values based on ridge projection method
+stability               Function to perform stability selection

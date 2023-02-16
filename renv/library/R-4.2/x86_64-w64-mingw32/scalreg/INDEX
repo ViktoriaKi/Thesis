@@ -1,0 +1,5 @@
+predict.scalreg         Prediction based on a scalreg object
+print.scalreg           Printing the solution from a scalreg object
+scalreg                 Scaled sparse linear regression
+scalreg-package         Scaled sparse linear regression
+sp500                   sp500

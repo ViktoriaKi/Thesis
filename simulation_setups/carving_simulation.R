@@ -173,6 +173,7 @@ mainFunc <- function() {
           psplit.fwer <- pmin(psplit.nofwer * model.size, 1)
         }
         else {
+        # 15/2/23 JMH/VK applying the single-split method from Meinshausen (2.1)
           pcarve.fwer <- pcarve.nofwer * model.size
           psplit.fwer <- psplit.nofwer * model.size
         }
@@ -194,7 +195,7 @@ mainFunc <- function() {
         for (B in B.vec) {
           if (B > 1) {
             use <- 1:B
-            # 15/2/23 JMH/VK set cutof = TRUE for B > 1 as in Meinshausen 2.3
+            # 15/2/23 JMH/VK set cutoff = TRUE for B > 1 as in Meinshausen 2.3
             pvals.aggregated <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
                                                 round(seq(ceiling(0.05 * B)/B, 1, by = 1/B), 2), cutoff = TRUE)
             pvals.aggregated2 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
@@ -204,7 +205,7 @@ mainFunc <- function() {
             pvals.aggregated4 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
                                                  round(ceiling(0.3 * B)/B, 2), cutoff = TRUE)
           } else {
-            # 15/2/23 JMH/VK set cutof = TRUE for B > 1 as in Meinshausen 2.3
+            # 15/2/23 JMH/VK set cutoff = TRUE for B > 1 as in Meinshausen 2.3
             browser()
             pvals.aggregated <- list(pcarve.nofwer[1, ], pcarve.fwer[1, ], psplit.nofwer[1, ], psplit.fwer[1, ])
           }

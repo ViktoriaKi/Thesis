@@ -1,0 +1,37 @@
+ROSI                    Relevant One-step Selective Inference for the
+                        LASSO
+TG.interval             Truncated Gaussian confidence interval.
+TG.limits               Truncation limits and standard deviation.
+TG.pvalue               Truncated Gaussian p-value.
+debiasingMatrix         Find an approximate inverse of a non-negative
+                        definite matrix.
+estimateSigma           Estimate the noise standard deviation in
+                        regression
+factorDesign            Expand a data frame with factors to form a
+                        design matrix with the full binary encoding of
+                        each factor.
+fixedLassoInf           Inference for the lasso, with a fixed lambda
+forwardStop             ForwardStop rule for sequential p-values
+fs                      Forward stepwise regression
+fsInf                   Selective inference for forward stepwise
+                        regression
+groupfs                 Select a model with forward stepwise.
+groupfsInf              Compute selective p-values for a model fitted
+                        by 'groupfs'.
+lar                     Least angle regression
+larInf                  Selective inference for least angle regression
+manyMeans               Selective inference for many normal means
+plot.fs                 Plot function for forward stepwise regression
+plot.lar                Plot function for least angle regression
+predict.fs              Prediction and coefficient functions for
+                        forward stepwise regression
+predict.groupfs         Prediction and coefficient functions for
+                        'groupfs'.
+predict.lar             Prediction and coefficient functions for least
+                        angle regression
+randomizedLasso         Inference for the randomized lasso, with a
+                        fixed lambda
+randomizedLassoInf      Inference for the randomized lasso, with a
+                        fixed lambda
+scaleGroups             Center and scale design matrix by groups
+selectiveInference      Tools for selective inference
