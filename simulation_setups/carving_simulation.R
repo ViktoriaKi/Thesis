@@ -34,12 +34,13 @@ source("inference/tryCatch-W-E.R")
 n <- 10
 p <- 20
 rho <- 0.6
+level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 2, 5, 10, 15, 20)
 ind <- sel.index
 beta <- rep(0, p)
 beta[sel.index] <- 1
-sparsity <- 6
+sparsity <- length(sel.index) # 17/02/23 VK, changed so that value automatically updates
 set.seed(42) # to make different methods comparable, fix the x-matrix
 x <- mvrnorm(n, rep(0, p), Cov)
 print (x[1,1])
@@ -151,15 +152,14 @@ mainFunc <- function() {
         else c(mcrtry$warning, c100try$warning)
         for (b in B.vec) {
           if (b > 1) {
-            out.list[[as.character(b)]] <- rep(NA, (length(ind) + 1) * 16)
+            out.list[[as.character(b)]] <- rep(NA, (length(ind) + 1) * length(names)) #17/02/23 VK, replacing 16
           } else {
-            out.list[[as.character(b)]] <- rep(NA, (length(ind) + 1) * 6 + 9)
+            out.list[[as.character(b)]] <- rep(NA, (length(ind) + 1) * sum(length(names1), length(names2)) + 9) #17/02/23 VK, replacing 6
           }
         }
         out.list$exception <- list(err, paste(1:length(war), ":", war, collapse = ", "))
         out.list
       } else {
-        browser()
         mcr <- mcrtry$value
         pcarve.nofwer <- mcr[[1]]$pvals.nonaggr
         psplit.nofwer <- mcr[[2]]$pvals.nonaggr
@@ -206,7 +206,6 @@ mainFunc <- function() {
                                                  round(ceiling(0.3 * B)/B, 2), cutoff = TRUE)
           } else {
             # 15/2/23 JMH/VK set cutoff = TRUE for B > 1 as in Meinshausen 2.3
-            browser()
             pvals.aggregated <- list(pcarve.nofwer[1, ], pcarve.fwer[1, ], psplit.nofwer[1, ], psplit.fwer[1, ])
           }
           
@@ -240,9 +239,9 @@ mainFunc <- function() {
             R <- length(which(mcr[[1]]$sel.models[1, ])) # number of variables selected in first split
             TS <- sum(ind %in% which(mcr[[1]]$sel.models[1, ])) # number of active variables selected
             V <- R - TS # number of inactive variables selected
-            carve.err <- sum(pvals.aggregated[[1]][-ind] < 0.05) # number of false rejection from single-carving
-            split.err <- sum(pvals.aggregated[[3]][-ind] < 0.05) # number of false rejection from single-splitting
-            carve100.err <- sum(pc100.nofwer[-ind] < 0.05) # number of false rejection from carve100
+            carve.err <- sum(pvals.aggregated[[1]][-ind] < level) # number of false rejection from single-carving #17/02/23 VK, setting significance level only once
+            split.err <- sum(pvals.aggregated[[3]][-ind] < level) # number of false rejection from single-splitting #17/02/23 VK, setting significance level only once
+            carve100.err <- sum(pc100.nofwer[-ind] < level) # number of false rejection from carve100
             run.res <- c(run.res, R, V, TS) 
             true.pv <- pc100.nofwer[ind] # p-values of active variables
             bad.pv <- min(pc100.nofwer[-ind]) # lowest p-value of inactive variables to check FWER
@@ -289,7 +288,7 @@ mainFunc <- function() {
         print("RES")
         print(res)
         subres <- matrix(unlist(res[,as.character(B)]), nrow = dim(res)[1],
-                         ncol = 6 * (sparsity + 1) + 9, byrow = TRUE)
+                         ncol = sum(length(names1), length(names2)) * (sparsity + 1) + 9, byrow = TRUE) #17/02/23 VK, replacing 6
         if (any(!is.na(subres[-succ, ]))) print("not as it should be") # sanity check
         subres <- subres[succ,]
         colnames(subres) <- c(rep(names1, each = (sparsity + 1)), "R", "V", "R-V",
@@ -302,7 +301,7 @@ mainFunc <- function() {
                  "carvefwfix5", "splitfix5", "splitfwfix5", "carvefix30",
                  "carvefwfix30", "splitfix30", "splitfwfix30")
         subres <- matrix(unlist(res[,as.character(B)]), nrow = dim(res)[1],
-                         ncol = 16 * (sparsity + 1), byrow = TRUE)
+                         ncol = length(names) * (sparsity + 1), byrow = TRUE) #17/02/23 VK, replacing 16
         if (any(!is.na(subres[-succ, ]))) print("not as it should be")
         subres <- subres[succ,]
         colnames(subres) <- c(rep(names, each = (sparsity + 1)))
@@ -329,17 +328,15 @@ mainFunc <- function() {
                 sum(subres$carve100.err[good100]) / sum(subres$V100[good100]))) 
       } 
       allrej <- matrix(NA, nrow = 1,ncol = length(names))
-      browser()
       colnames(allrej) <- names
       for (name in names) {
         nameind <- which(colnames(subres) == name)
         mat <- subres[, nameind]
-        rej <- quantile(mat[, sparsity + 1], 0.05, na.rm = TRUE)
+        rej <- quantile(mat[, sparsity + 1], level, na.rm = TRUE) #17/02/23 VK, setting significance level only once
         rejmat <- mat[, 1:sparsity] < rej
         allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
         
       }
-      browser()
       print("Adjusted")
       print(allrej) # adjusted power
       fwer <- numeric(length(names))
@@ -347,8 +344,8 @@ mainFunc <- function() {
       for (name in names) {
         nameind <- which(colnames(subres) == name)
         mat <- subres[, nameind]
-        fwer[as.character(name)] <- mean(mat[, sparsity + 1] < 0.05, na.rm = TRUE)
-        rejmat <- mat[, 1:sparsity] < 0.05
+        fwer[as.character(name)] <- mean(mat[, sparsity + 1] < level, na.rm = TRUE) #17/02/23 VK, setting significance level only once
+        rejmat <- mat[, 1:sparsity] < level #17/02/23 VK, setting significance level only once
         allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
       }
       print("Unadjusted")
