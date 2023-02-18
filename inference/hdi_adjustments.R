@@ -100,10 +100,10 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
       y.left <- y[split]
       x.right <- x[-split, ]
       y.right <- y[-split]
-      #18/02/23 VK, selecting active variables using the fraction of selection data (default is 90% of data)
+      #18/02/23 VK, selecting active variables with lasso using the fraction of selection data (default is 90% of data)
       output <- do.call(model.selector, args = c(list(x = x.left, 
                                                       y = y.left), args.model.selector)) 
-      sel.model <- output$sel.model
+      sel.model <- output$sel.model #18/02/23 VK, this also includes the intercept. If 1 is selected= intercept is selected
       beta <- output$beta
       lambda <- output$lambda
       
@@ -135,13 +135,14 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
             break()
           }
           threshn <- 1e-7 / (100) ^ thresh.count
+          #18/02/23 VK, it seems like all variables are fitted, not only the ones selected
           fit <- glmnet(x = x.left, y = y.left, standardize = args.model.selector$standardize,
                         intercept = args.model.selector$intercept, thresh = threshn,family = family)
           if (verbose) cat(threshn,"\n")
           coefs <- coef(fit,x = x.left,y = y.left,s = lambda/n.left,exact = TRUE,
                         standardize = args.model.selector$standardize, 
                         intercept = args.model.selector$intercept, thresh = threshn, family = family)
-          beta <- coefs[-1]
+          beta <- coefs[-1] #18/02/23 VK, return everything but the intercept
           sel.model <- which(abs(beta) > 0)
           
           if (family == "binomial") beta <- coefs
@@ -269,7 +270,7 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
         stop(paste("The carve procedure didn't return the correct number of p-values for the provided submodel. Expected",
                    p.sel, "received", length(sel.pval1)))
       }
-      if (!all(sel.pval1 >= 0 & sel.pval1 <= 1)) {
+      if (!all(sel.pval1 >= 0 & sel.pval1 <= 1)) { #18/02/23 VK, we should check why this warking did not occur in our case! Or if we missed something
         stop("The carve procedure returned values below 0 or above 1 as p-values")
       }
       if (FWER) {
@@ -424,6 +425,10 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
                    method = "multi.carve", call = match.call()), class = "carve")
   }
 }
+
+# carve100: Function to execute the whole process of pure post-selection inference, 
+# i.e. selecting a model and calculating p-values using all data for selection.
+# Must at least provide predictor matrix (x) and response vector (y).
 carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = lasso.cvcoef,
                       args.model.selector = list(intercept = TRUE, standardize = FALSE, tol.beta = 1e-5),
                       estimate.sigma = TRUE, df.corr = FALSE, args.lasso.inference = list(sigma = NA),
@@ -469,7 +474,7 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
   if (verbose) 
     cat("...selecting model\n")
   output <- do.call(model.selector, 
-                    args = c(list(x = x, y = y), args.model.selector))
+                    args = c(list(x = x, y = y), args.model.selector)) 
   sel.model <- output$sel.model
   beta <- output$beta
   lambda <- output$lambda
@@ -503,12 +508,11 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
       }
       threshn <- 1e-7 / (100) ^ thresh.count
       fit <- glmnet(x = x, y = y, standardize = args.model.selector$standardize,
-                    intercept = args.model.selector$intercept, thresh = threshn,family = family)
+                    intercept = args.model.selector$intercept, thresh = threshn,family = family) #18/02/23 VK, diff to before, now all the data is used!
       cat(threshn, "\n")
       coefs <- coef(fit, x = x,y = y, s = lambda / n, exact = TRUE, standardize = args.model.selector$standardize,
-                    intercept = args.model.selector$intercept, thresh = threshn, family = family)
+                    intercept = args.model.selector$intercept, thresh = threshn, family = family) #18/02/23 VK, this already shows coef of selected variables only
       beta <- coefs[-1]
-      
       if (args.model.selector$intercept) {
         sel.model <- which(abs(beta) > args.model.selector$tol.beta * sqrt(nrow(x) / colSums(scale(x, T, F) ^ 2))) # model indices
       } else {
@@ -584,7 +588,7 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
       if (!all(sel.pval1 >= 0 & sel.pval1 <= 1)) 
         stop("The carve 100 procedure returned values below 0 or above 1 as p-values")
       if (FWER) {
-        sel.pval1 <- pmin(sel.pval1 * p.sel, 1) #for FWER
+        sel.pval1 <- pmin(sel.pval1 * p.sel, 1) #for FWER 
       } else {
         sel.pval1 <- pmin(sel.pval1, 1) #for FCR
       }
@@ -616,13 +620,16 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
                  method = "carve100", call = match.call()), class = "carve")
 }
 
+# multi.carve.group: Function to execute the whole multicarving process for groups, 
+# i.e. selecting a model and performing groupwise inference on each split as well 
+# as calculate multicarving p-values. Must at least provide predictor matrix (x) 
+# and response vector (y) and a list of vectors for the groups that shall be tested.
 multi.carve.group <- function (x, y, groups, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B) >= 0.05], FWER = FALSE, family = "gaussian", 
                                model.selector = lasso.cvcoef, args.model.selector = list(intercept = TRUE, standardize = FALSE),
                                se.estimator = "1se", args.se.estimator = list(df.corr = FALSE, intercept = TRUE, standardize = FALSE),
                                args.lasso.inference = list(sigma = NA, sig.level = 0.05, FWER = FWER, aggregation = min(gamma)),
                                parallel = FALSE, ncores = getOption("mc.cores", 2L), skip.groups = TRUE,
                                return.nonaggr = FALSE, return.selmodels = FALSE, verbose = FALSE) {
-  
   # routine to split the data, select a model and calculate carving p-values for groups B times
   # Input
   # x (matrix): matrix of predictors
