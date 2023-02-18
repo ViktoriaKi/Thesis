@@ -154,7 +154,7 @@ mainFunc <- function() {
           if (b > 1) {
             out.list[[as.character(b)]] <- rep(NA, (length(ind) + 1) * length(names)) #17/02/23 VK, replacing 16
           } else {
-            out.list[[as.character(b)]] <- rep(NA, (length(ind) + 1) * sum(length(names1), length(names2)) + 9) #17/02/23 VK, replacing 6
+            out.list[[as.character(b)]] <- rep(NA, (length(ind) + 1) * 6 + 9) 
           }
         }
         out.list$exception <- list(err, paste(1:length(war), ":", war, collapse = ", "))

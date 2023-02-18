@@ -1,6 +1,13 @@
 # this file contains functions adapted from the functions in hdi for multisplitting
 # making them applicable to multicarving
 
+
+#--------- M U L T I C A R V E ----------#
+
+# multi.carve: Function to execute the whole multicarving process, i.e. selecting
+# a model and infering on each split as well as calculating multicarving p-values. 
+# Must at least provide predictor matrix (x) and response vector (y). #18/02/23 VK
+
 multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B) >= 0.05], FWER = TRUE, family = "gaussian",
                         model.selector = lasso.cvcoef, args.model.selector = list(intercept = TRUE, standardize = FALSE),
                         se.estimator = "1se", args.se.estimator = list(df.corr = FALSE, intercept = TRUE, standardize = FALSE),
@@ -71,7 +78,6 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
       args.classical.fit$Sigma <- globalSigma
     }
   }
-  
   n <- nrow(x)
   p <- ncol(x)
   n.left <- floor(n * fraction)
@@ -83,7 +89,7 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
     sel.models <- logical(p)
     try.again <- TRUE
     split.count <- 0
-    thresh.count <- 0L
+    thresh.count <- 0L #18/02/23 VK, stores the number as numeric 
     threshn <- 1e-7
     continue <- TRUE
     split.again <- TRUE
@@ -94,9 +100,9 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
       y.left <- y[split]
       x.right <- x[-split, ]
       y.right <- y[-split]
-      
+      #18/02/23 VK, selecting active variables using the fraction of selection data (default is 90% of data)
       output <- do.call(model.selector, args = c(list(x = x.left, 
-                                                      y = y.left), args.model.selector))
+                                                      y = y.left), args.model.selector)) 
       sel.model <- output$sel.model
       beta <- output$beta
       lambda <- output$lambda
@@ -106,7 +112,6 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
       p.sel <- length(sel.model)
       # for empty model, active constraints are trivially fulfilled
       if (p.sel == 0) fit.again <- FALSE
-      
       while (fit.again) {
         fit.again <- FALSE
         checktry <- tryCatch_W_E(constraint.checker(x.left, y.left, beta, 0, lambda,
@@ -145,7 +150,6 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
           warning(paste("reducing threshold", thresh.count, "to", threshn, sep = " "))
         }
       }
-      
       p.sel <- length(sel.model)
       # use new split in case of singularity. This is mostly an issue for discrete x.
       if (args.model.selector$intercept) {
@@ -204,7 +208,6 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
   } else {
     which.check <- NULL
   }
-  
   oneSplit.infer <- function(sel) {
     if (verbose) 
       cat("...split", sel$B, "\n")
@@ -421,7 +424,6 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
                    method = "multi.carve", call = match.call()), class = "carve")
   }
 }
-
 carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = lasso.cvcoef,
                       args.model.selector = list(intercept = TRUE, standardize = FALSE, tol.beta = 1e-5),
                       estimate.sigma = TRUE, df.corr = FALSE, args.lasso.inference = list(sigma = NA),
@@ -1440,7 +1442,6 @@ multi.carve.ci.saturated <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B
 }
 
 pval.aggregator <- function(pval.list, gamma, cutoff = TRUE) {
-  browser()
   aggregated.list <- list()
   i <- 0
   for (pvals in pval.list) {
