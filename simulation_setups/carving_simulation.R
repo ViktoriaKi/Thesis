@@ -66,7 +66,7 @@ report.sigma <- FALSE
 # SNR <- 16
 # sparsity <- 2 # 4 in other set-up
 
-B.vec <- c(1) # c(1, (1:5) * 10) # number of splits
+B.vec <- c(3) # c(1, (1:5) * 10) # number of splits
 frac.vec <- c(0.5, 0.75) # selection fraction
 nsim <- 10
 ntasks <- nsim
@@ -234,6 +234,11 @@ mainFunc <- function() {
               run.res <- c(run.res, true.pv, bad.pv)
             }
           }
+          # 23/2/23 JMH/VK adapt and add R, TS, V for all values
+          R <- length(which(mcr[[1]]$sel.models)) / B
+          TS <- sum(ind %in% which(mcr[[1]]$sel.models, arr.ind = TRUE)[,2]) / B
+          V <- R - TS
+          run.res <- c(run.res, R, TS, V)
           if (B == 1) {
             # analyse first split specially for B = 1 and analyse carve100
             R <- length(which(mcr[[1]]$sel.models[1, ])) # number of variables selected in first split
@@ -242,7 +247,8 @@ mainFunc <- function() {
             carve.err <- sum(pvals.aggregated[[1]][-ind] < level) # number of false rejection from single-carving #17/02/23 VK, setting significance level only once
             split.err <- sum(pvals.aggregated[[3]][-ind] < level) # number of false rejection from single-splitting #17/02/23 VK, setting significance level only once
             carve100.err <- sum(pc100.nofwer[-ind] < level) # number of false rejection from carve100
-            run.res <- c(run.res, R, V, TS) 
+            # 23/2/23 JMH/VK comment out as no longer needed due to adding for all
+            # run.res <- c(run.res, R, V, TS)
             true.pv <- pc100.nofwer[ind] # p-values of active variables
             bad.pv <- min(pc100.nofwer[-ind]) # lowest p-value of inactive variables to check FWER
             run.res <- c(run.res, true.pv, bad.pv)
@@ -285,8 +291,6 @@ mainFunc <- function() {
       if (B == 1) {
         names1 <- c("carve","carvefw", "split", "splitfw")
         names2 <- c("carve100","carve100fw")
-        print("RES")
-        print(res)
         subres <- matrix(unlist(res[,as.character(B)]), nrow = dim(res)[1],
                          ncol = sum(length(names1), length(names2)) * (sparsity + 1) + 9, byrow = TRUE) #17/02/23 VK, replacing 6
         if (any(!is.na(subres[-succ, ]))) print("not as it should be") # sanity check
@@ -300,11 +304,13 @@ mainFunc <- function() {
                  "carvefw30", "split30", "splitfw30", "carvefix5",
                  "carvefwfix5", "splitfix5", "splitfwfix5", "carvefix30",
                  "carvefwfix30", "splitfix30", "splitfwfix30")
+        browser()
         subres <- matrix(unlist(res[,as.character(B)]), nrow = dim(res)[1],
-                         ncol = length(names) * (sparsity + 1), byrow = TRUE) #17/02/23 VK, replacing 16
+                         ncol = length(names) * (sparsity + 1) + 3, byrow = TRUE) #17/02/23 VK, replacing 16, +3 for R, V, R-V
         if (any(!is.na(subres[-succ, ]))) print("not as it should be")
         subres <- subres[succ,]
-        colnames(subres) <- c(rep(names, each = (sparsity + 1)))
+        # 23/2/23 JMH/VK add R, V, R-V cols
+        colnames(subres) <- c(rep(names, each = (sparsity + 1)), "R", "V", "R-V")
       }
       subres <- as.data.frame(subres)
   
