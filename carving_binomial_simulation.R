@@ -46,10 +46,10 @@ print (x[1,1])
 xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
-B.vec <- c(1, (1:5) * 10) # number of splits
-frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
+B.vec <- c(2) # number of splits
+frac.vec <- c(0.5) # selection fraction
 
-nsim <- 200
+nsim <- 20
 ntasks <- nsim
 progress <- function(n, tag) {
   mod <- 16
@@ -67,6 +67,8 @@ seed.v <- sample(1:10000, length(frac.vec))
 print(seed.v) # 3588 3052 2252 5257 8307
 seed.n <- 0
 B <- max(B.vec)
+
+mainFunc <- function() {
 for (frac in frac.vec) {
   seed.n <- seed.n + 1
   set.seed(seed.v[seed.n])
@@ -82,11 +84,11 @@ for (frac in frac.vec) {
   clusterSetRNGStream(cl, iseed = rseed) #make things reproducible
   registerDoSNOW(cl)
   tic()
-  res<-foreach(gu = 1:nsim, .combine = rbind,
-               .packages = c("MASS", "selectiveInference", "glmnet", "Matrix",
-                             "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
+  # res<-foreach(gu = 1:nsim, .combine = rbind,
+  #              .packages = c("MASS", "selectiveInference", "glmnet", "Matrix",
+  #                            "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
                                # alternative if sequential computation is preferred
-                               # res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
+                               res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
                                
                                ylim <- runif(n)
                                y <- rep(0, n)
@@ -122,12 +124,23 @@ for (frac in frac.vec) {
                                  out.list$exception <- list(err, paste(1:length(war), ":", war, collapse = ", "))
                                  out.list
                                } else {
+                                 browser()
                                  mcr <- mcrtry$value
                                  pcarve.nofwer <- mcr[[1]]$pvals.nonaggr
                                  psplit.nofwer <- mcr[[2]]$pvals.nonaggr
                                  model.size <- apply(mcr[[1]]$sel.models, 1, sum)
                                  model.size[model.size == 0]  <- 1 # if no variable is selected, p-values are 1
                                  # ommit the clipping to calculate adjusted power
+                                 # 15/2/23 JMH/VK change from below to cap as in Meinshausen 2.1
+                                 if (B > 1) {
+                                   pcarve.fwer <- pmin(pcarve.nofwer * model.size, 1)
+                                   psplit.fwer <- pmin(psplit.nofwer * model.size, 1)
+                                 }
+                                 else {
+                                   # 2/3/23 JMH/VK applying the single-split method from Meinshausen (2.1)
+                                   pcarve.fwer <- pcarve.nofwer * model.size
+                                   psplit.fwer <- psplit.nofwer * model.size
+                                 }
                                  # pcarve.fwer <- pmin(pcarve.nofwer * model.size, 1)
                                  # psplit.fwer <- pmin(psplit.nofwer * model.size, 1)
                                  pcarve.fwer <- pcarve.nofwer*model.size
@@ -136,20 +149,28 @@ for (frac in frac.vec) {
                                  pc100.nofwer <- c100$pval.corr
                                  model.size100 <- sum(c100$sel.models)
                                  model.size100[model.size100 == 0]  <- 1
+                                 # 2/3/23 JMH/VK change from below to cap as in Meinshausen 2.1
+                                 if (B > 1) {
+                                   pc100.fwer <- pmin(pc100.nofwer * model.size100, 1)
+                                 }
+                                 else {
+                                   pc100.fwer <- pc100.nofwer * model.size100
+                                 }
+                                 # pc100.fwer <- pc100.nofwer * model.size100
                                  # pc100.fwer <- pmin(pc100.nofwer * model.size100, 1)
-                                 pc100.fwer <- pc100.nofwer * model.size100
                                  
                                  for (B in B.vec) {
                                    if (B > 1) {
+                                     # 2/3/23 JMH/VK set cutoff = TRUE for B > 1 as in Meinshausen 2.3
                                      use <- 1:B
                                      pvals.aggregated <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                                         round(seq(ceiling(0.05 * B)/B, 1 - 1/B, by = 1/B), 2), cutoff = FALSE)
+                                                                         round(seq(ceiling(0.05 * B)/B, 1 - 1/B, by = 1/B), 2), cutoff = TRUE)
                                      pvals.aggregated2 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                                          round(seq(ceiling(0.3 * B)/B, 1 - 1/B, by = 1/B), 2), cutoff = FALSE)
+                                                                          round(seq(ceiling(0.3 * B)/B, 1 - 1/B, by = 1/B), 2), cutoff = TRUE)
                                      pvals.aggregated3 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                                          round(ceiling(0.05 * B)/B, 2), cutoff = FALSE)
+                                                                          round(ceiling(0.05 * B)/B, 2), cutoff = TRUE)
                                      pvals.aggregated4 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                                          round(ceiling(0.3 * B)/B, 2), cutoff = FALSE)
+                                                                          round(ceiling(0.3 * B)/B, 2), cutoff = TRUE)
                                    } else {
                                      pvals.aggregated <- list(pcarve.nofwer[1, ], pcarve.fwer[1, ], psplit.nofwer[1, ], psplit.fwer[1, ])
                                    }
@@ -179,6 +200,11 @@ for (frac in frac.vec) {
                                        run.res <- c(run.res, true.pv, bad.pv)
                                      }
                                    }
+                                   # 2/3/23 JMH/VK adapt and add R, TS, V for all values
+                                   R <- length(which(mcr[[1]]$sel.models)) / B
+                                   TS <- sum(ind %in% which(mcr[[1]]$sel.models, arr.ind = TRUE)[,2]) / B
+                                   V <- R - TS
+                                   run.res <- c(run.res, R, TS, V)
                                    if (B == 1) {
                                      # analyse first split specially for B = 1 and analyse carve100
                                      R <- length(which(mcr[[1]]$sel.models[1, ])) # number of variables selected in first split
@@ -187,7 +213,8 @@ for (frac in frac.vec) {
                                      carve.err <- sum(pvals.aggregated[[1]][-ind] < 0.05)
                                      split.err <- sum(pvals.aggregated[[3]][-ind] < 0.05)
                                      carve100.err <- sum(pc100.nofwer[-ind] < 0.05)
-                                     run.res <- c(run.res, R, V, TS) 
+                                     # 2/3/23 JMH/VK comment out as no longer needed due to adding for all
+                                     # run.res <- c(run.res, R, V, TS) 
                                      true.pv <- pc100.nofwer[ind]
                                      bad.pv <- min(pc100.nofwer[-ind])
                                      R100 <- length(which(c100$sel.models))
@@ -244,11 +271,15 @@ for (frac in frac.vec) {
                        ncol = 16 * (sparsity+1), byrow = TRUE)
       if (any(!is.na(subres[-succ, ]))) print("not as it should be")
       subres <- subres[succ,]
-      colnames(subres) <- c(rep(names, each = (sparsity + 1)))
+      # 2/3/23 JMH/VK add R, V, R-V cols
+      colnames(subres) <- c(rep(names, each = (sparsity + 1)), "R", "V", "R-V")
+      # colnames(subres) <- c(rep(names, each = (sparsity + 1)))
     }
     subres <- as.data.frame(subres)
+    # 2/3/23 JMH/VK add selection index and all p values
     simulation <- list("results" = subres, "exceptions" = expmatr, "y" = all.y, "B" = B, "split" = frac,
-                       "nsim" = nsim, "seed" = rseed, "All used B" = B.vec, "sd" = sd, "commit" = commit)
+                       "nsim" = nsim, "seed" = rseed, "All used B" = B.vec, "sd" = sd, "commit" = commit, "sel.index"=sel.index,
+                       "pvals.aggregated" = pvals.aggregated)
     print(paste("results using fraction ", frac, " and B=", B, sep = ""))
     if (B == 1) {
       print(mean(subres$`R-V` == sparsity)) # probability of screening
@@ -296,5 +327,8 @@ for (frac in frac.vec) {
     
   }
 }
+}
+
+mainFunc()
 
 print("Finale")

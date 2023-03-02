@@ -312,8 +312,10 @@ for (frac in frac.vec) {
     }
     subres <- as.data.frame(subres)
 
+    # 15/2/23 VK add selection index, 2/3/23 JMH/VK add pvals.aggregated
     simulation <- list("results" = subres, "exceptions" = expmatr, "y" = all.y, "B" = B, "split" = frac,
-                       "nsim" = nsim, "seed" = rseed, "All used B" = B.vec, "sd" = sd, "commit" = commit, "sparsity"=sparsity, "sel.index"=sel.index )
+                       "nsim" = nsim, "seed" = rseed, "All used B" = B.vec, "sd" = sd, "commit" = commit, "sparsity"=sparsity, "sel.index"=sel.index,
+                       "pvals.aggregated" = pvals.aggregated)
 
     print(paste("results using fraction ", frac, " and B=", B, sep = ""))
     if (B == 1) {
