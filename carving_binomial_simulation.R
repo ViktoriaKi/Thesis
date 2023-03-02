@@ -68,7 +68,6 @@ print(seed.v) # 3588 3052 2252 5257 8307
 seed.n <- 0
 B <- max(B.vec)
 
-mainFunc <- function() {
 for (frac in frac.vec) {
   seed.n <- seed.n + 1
   set.seed(seed.v[seed.n])
@@ -84,11 +83,11 @@ for (frac in frac.vec) {
   clusterSetRNGStream(cl, iseed = rseed) #make things reproducible
   registerDoSNOW(cl)
   tic()
-  # res<-foreach(gu = 1:nsim, .combine = rbind,
-  #              .packages = c("MASS", "selectiveInference", "glmnet", "Matrix",
-  #                            "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
+  res<-foreach(gu = 1:nsim, .combine = rbind,
+               .packages = c("MASS", "selectiveInference", "glmnet", "Matrix",
+                             "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
                                # alternative if sequential computation is preferred
-                               res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
+                               # res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
                                
                                ylim <- runif(n)
                                y <- rep(0, n)
@@ -124,7 +123,6 @@ for (frac in frac.vec) {
                                  out.list$exception <- list(err, paste(1:length(war), ":", war, collapse = ", "))
                                  out.list
                                } else {
-                                 browser()
                                  mcr <- mcrtry$value
                                  pcarve.nofwer <- mcr[[1]]$pvals.nonaggr
                                  psplit.nofwer <- mcr[[2]]$pvals.nonaggr
@@ -327,8 +325,6 @@ for (frac in frac.vec) {
     
   }
 }
-}
 
-mainFunc()
 
 print("Finale")
