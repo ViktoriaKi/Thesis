@@ -1,3 +1,12 @@
+# Uncommenct to install "tmg", R Tools needs to be installed beforehand
+# url <- "https://cran.r-project.org/src/contrib/Archive/tmg/tmg_0.3.tar.gz"
+# pkgFile <- "tmg_0.3.tar.gz"
+# download.file(url = url, destfile = pkgFile)
+# # Install package
+# install.packages(pkgs=pkgFile, type="source", repos=NULL)
+# # Delete package tarball
+# unlink(pkgFile)
+
 rm(list = ls(all = TRUE))
 save <- TRUE
 
@@ -29,8 +38,8 @@ source("inference/sample_from_truncated.R")
 source("inference/tryCatch-W-E.R")
 
 # toeplitz
-n <- 100
-p <- 200
+n <- 40
+p <- 80
 rho <- 0.6
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)
@@ -46,10 +55,10 @@ print (x[1,1])
 xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
-B.vec <- c(1, (1:5) * 10) # number of splits
-frac.vec <- c(0.5) # selection fraction
+B.vec <- c(1, 50) # number of splits
+frac.vec <- c(0.5,0.75, 0.8, 0.9 , 0.99) # selection fraction
 
-nsim <- 20
+nsim <- 5
 ntasks <- nsim
 progress <- function(n, tag) {
   mod <- 16
