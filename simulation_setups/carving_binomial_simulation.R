@@ -38,8 +38,9 @@ source("inference/sample_from_truncated.R")
 source("inference/tryCatch-W-E.R")
 
 # toeplitz
-n <- 40
-p <- 80
+
+n <- 150
+p <- 200
 rho <- 0.6
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)
@@ -47,6 +48,10 @@ ind <- sel.index
 beta <- rep(0, p)
 beta[sel.index] <- 2
 sparsity <- 5
+
+B.vec <- c(1, 5, 10, 20, 50) # number of splits
+frac.vec <- c(0.5,0.75, 0.8, 0.9 , 0.99) # selection fraction
+
 set.seed(42) # to make different methods comparable, fix the x-matrix
 x <- mvrnorm(n, rep(0, p), Cov)
 print (x[1,1])
@@ -55,10 +60,7 @@ print (x[1,1])
 xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
-B.vec <- c(1, 50) # number of splits
-frac.vec <- c(0.5,0.75, 0.8, 0.9 , 0.99) # selection fraction
-
-nsim <- 5
+nsim <- 100
 ntasks <- nsim
 progress <- function(n, tag) {
   mod <- 16
@@ -86,7 +88,7 @@ for (frac in frac.vec) {
   
   # parallelization
   # choose different number of cores if wished
-  cl<- makeSOCKcluster(16) 
+  cl<- makeSOCKcluster(8) 
 
   rseed <- seed.v[seed.n]
   clusterSetRNGStream(cl, iseed = rseed) #make things reproducible
