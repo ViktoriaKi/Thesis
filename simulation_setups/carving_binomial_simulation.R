@@ -39,7 +39,7 @@ source("inference/tryCatch-W-E.R")
 
 # toeplitz
 
-n <- 150
+n <- 100
 p <- 200
 rho <- 0.6
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
