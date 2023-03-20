@@ -32,12 +32,13 @@ source("inference/tryCatch-W-E.R")
 n <- 100
 p <- 200
 rho <- 0.6
+level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)
 ind <- sel.index
 beta <- rep(0, p)
 beta[sel.index] <- 2
-sparsity <- 5
+sparsity <- length(sel.index) # 17/02/23 VK, changed so that value automatically updates
 set.seed(42) # to make different methods comparable, fix the x-matrix
 x <- mvrnorm(n, rep(0, p), Cov)
 print (x[1,1])
@@ -203,8 +204,8 @@ for (frac in frac.vec) {
                                      R <- length(which(mcr[[1]]$sel.models[1, ])) # number of variables selected in first split
                                      TS <- sum(ind %in% which(mcr[[1]]$sel.models[1, ])) # number of active variables selected
                                      V <- R - TS # number of inactive variables selected
-                                     carve.err <- sum(pvals.aggregated[[1]][-ind] < 0.05)
-                                     split.err <- sum(pvals.aggregated[[3]][-ind] < 0.05)
+                                     carve.err <- sum(pvals.aggregated[[1]][-ind] < level) # number of false rejection from single-carving #17/02/23 VK, setting significance level only once
+                                     split.err <- sum(pvals.aggregated[[3]][-ind] < level) # number of false rejection from single-splitting #17/02/23 VK, setting significance level only once
                                      carve100.err <- sum(pc100.nofwer[-ind] < 0.05)
                                     # run.res <- c(run.res, R, V, TS) #20/3/23 JMH, VK commented out 
                                      true.pv <- pc100.nofwer[ind]
@@ -292,7 +293,7 @@ for (frac in frac.vec) {
     for (name in names) {
       nameind <- which(colnames(subres) == name)
       mat <- subres[, nameind]
-      rej <- quantile(mat[, sparsity + 1], 0.05, na.rm = TRUE)
+      rej <- quantile(mat[, sparsity + 1], level, na.rm = TRUE) #17/02/23 VK, setting significance level only once
       rejmat <- mat[, 1:sparsity] < rej
       allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
       
@@ -305,8 +306,8 @@ for (frac in frac.vec) {
     for (name in names) {
       nameind <- which(colnames(subres) == name)
       mat <- subres[, nameind]
-      fwer[as.character(name)] <- mean(mat[,sparsity + 1] < 0.05, na.rm = TRUE)
-      rejmat <- mat[, 1:sparsity] < 0.05
+      fwer[as.character(name)] <- mean(mat[,sparsity + 1] < level, na.rm = TRUE)#20/3/23 0.05 to level
+      rejmat <- mat[, 1:sparsity] < level #VK 20/3/23 level 
       allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
     }
     print(fwer) # FWER

@@ -32,11 +32,11 @@ source("inference/tryCatch-W-E.R")
 
 # toeplitz
 n <- 100
-p <- 2000
+p <- 200
 rho <- 0.6
 level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
-sel.index <- c(1, 2, 5, 10, 15, 20)
+sel.index <- c(1, 5, 10, 15, 20)
 ind <- sel.index
 beta <- rep(0, p)
 beta[sel.index] <- 1
@@ -66,8 +66,8 @@ report.sigma <- FALSE
 # SNR <- 16
 # sparsity <- 2 # 4 in other set-up
 
-B.vec <- c(1,50) # c(1, (1:5) * 10) # number of splits
-frac.vec <- c(0.5, 0.75) # selection fraction
+B.vec <- c(1, 5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
+frac.vec <- c(0.5,0.75, 0.8, 0.9 , 0.99) # selection fraction
 nsim <- 100
 ntasks <- nsim
 progress <- function(n, tag) {
