@@ -17,6 +17,8 @@ require(parallel)
 require(doRNG)
 require(tmg)
 require(git2r)
+# 21/3/23 JMH for unlisting pvals
+require(purrr)
 
 commit <- revparse_single(revision = "HEAD")
 print(paste("Run on commit", commit$sha, 'i.e.:', commit$summary))
@@ -47,7 +49,7 @@ print (x[1,1])
 xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
-B.vec <- c(1, (1:5) * 10) # number of splits
+B.vec <- c(1, 5, 10, 20, 50) # number of splits
 frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
 
 nsim <- 200
@@ -68,6 +70,7 @@ seed.v <- sample(1:10000, length(frac.vec))
 print(seed.v) # 3588 3052 2252 5257 8307
 seed.n <- 0
 B <- max(B.vec)
+
 for (frac in frac.vec) {
   seed.n <- seed.n + 1
   set.seed(seed.v[seed.n])
@@ -88,7 +91,6 @@ for (frac in frac.vec) {
                              "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
                                # alternative if sequential computation is preferred
                                # res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
-                               
                                ylim <- runif(n)
                                y <- rep(0, n)
                                y[ylim < p.true] <- 1
@@ -169,7 +171,6 @@ for (frac in frac.vec) {
                                      pvals.aggregated <- list(pcarve.nofwer[1, ], pcarve.fwer[1, ], psplit.nofwer[1, ], psplit.fwer[1, ])
                                    }
                                    
-                                   
                                    run.res <- vector(length = 0) # store important quantities
                                    np <- length(pvals.aggregated)
                                    for (i in 1:np) {
@@ -220,6 +221,8 @@ for (frac in frac.vec) {
                                                   carve.err, split.err, carve100.err)
                                    }
                                    out.list[[as.character(B)]] <- run.res
+                                   # 21/3/23 JMH add pvals aggregated
+                                   out.list[[paste0(as.character(B), '_pvalsAgg')]] <- pvals.aggregated
                                  }
                                  err <- if (is.null(mcrtry$error) && is.null(c100try$error)) NA
                                  else c(mcrtry$error, c100try$error) # should not happen due to earlier check
@@ -240,6 +243,8 @@ for (frac in frac.vec) {
   succ = which(is.na(expmatr[, 1]))
   print("succesful runs")
   
+  listPvals <- list()
+  
   all.y <- matrix(unlist(res[,"y"]), nrow = dim(res), byrow = TRUE)
   sd <- attr(res, "rng")
   
@@ -255,6 +260,11 @@ for (frac in frac.vec) {
                             rep(names2, each = (sparsity + 1)), "R100", "V100",
                             "R-V100", "carve.err", "split.err", "carve100.err")
       names <- c(names1, names2)
+      # 21/3/23 JMH add pvals aggregated
+      listPvals[[paste0(as.character(B), '_carveNoFWER')]] <- matrix(unlist(map(res[, paste0(as.character(B), "_pvalsAgg")], 1)), nrow = dim(res)[1], ncol = p, byrow = TRUE)
+      listPvals[[paste0(as.character(B), '_carveFWER')]] <- matrix(unlist(map(res[, paste0(as.character(B), "_pvalsAgg")], 2)), nrow = dim(res)[1], ncol = p, byrow = TRUE)
+      listPvals[[paste0(as.character(B), '_splitNoFWER')]] <- matrix(unlist(map(res[, paste0(as.character(B), "_pvalsAgg")], 3)), nrow = dim(res)[1], ncol = p, byrow = TRUE)
+      listPvals[[paste0(as.character(B), '_splitFWER')]] <- matrix(unlist(map(res[, paste0(as.character(B), "_pvalsAgg")], 4)), nrow = dim(res)[1], ncol = p, byrow = TRUE)
     } else {
       names<-c("carve5", "carvefw5", "split5", "splitfw5", "carve30",
                "carvefw30", "split30", "splitfw30", "carvefix5",
@@ -266,12 +276,17 @@ for (frac in frac.vec) {
       subres <- subres[succ,]
       # 20/3/23 JMH/VK add R, V, R-V cols
       colnames(subres) <- c(rep(names, each = (sparsity + 1)), "R", "V", "R-V")
+      # 21/3/23 JMH add pvals aggregated. This may break as n gets too low and warnings appear instead of data
+      listPvals[[paste0(as.character(B), '_carveNoFWER')]] <- matrix(unlist(map(res[, paste0(as.character(B), "_pvalsAgg")], 1)), nrow = dim(res)[1], ncol = p, byrow = TRUE)
+      listPvals[[paste0(as.character(B), '_carveFWER')]] <- matrix(unlist(map(res[, paste0(as.character(B), "_pvalsAgg")], 2)), nrow = dim(res)[1], ncol = p, byrow = TRUE)
+      listPvals[[paste0(as.character(B), '_splitNoFWER')]] <- matrix(unlist(map(res[, paste0(as.character(B), "_pvalsAgg")], 3)), nrow = dim(res)[1], ncol = p, byrow = TRUE)
+      listPvals[[paste0(as.character(B), '_splitFWER')]] <- matrix(unlist(map(res[, paste0(as.character(B), "_pvalsAgg")], 4)), nrow = dim(res)[1], ncol = p, byrow = TRUE)
     }
     subres <- as.data.frame(subres)
     # 20/3/23 VK add selection index, 2/3/23 JMH/VK add pvals.aggregated
     simulation <- list("results" = subres, "exceptions" = expmatr, "y" = all.y, "B" = B, "split" = frac,
                        "nsim" = nsim, "seed" = rseed, "All used B" = B.vec, "sd" = sd, "commit" = commit, "sparsity"=sparsity, "sel.index"=sel.index,
-                       "pvals.aggregated" = pvals.aggregated)
+                       "pvals.aggregated" = listPvals)
     print(paste("results using fraction ", frac, " and B=", B, sep = ""))
     if (B == 1) {
       print(mean(subres$`R-V` == sparsity)) # probability of screening
