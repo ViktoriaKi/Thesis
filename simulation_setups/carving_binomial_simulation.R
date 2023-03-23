@@ -31,8 +31,8 @@ source("inference/sample_from_truncated.R")
 source("inference/tryCatch-W-E.R")
 
 # toeplitz
-n <- 50
-p <- 75
+n <- 100
+p <- 200
 rho <- 0.6
 level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
@@ -49,10 +49,10 @@ print (x[1,1])
 xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
-B.vec <- c(2) # number of splits
+B.vec <- c(1, 5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
 frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
 
-nsim <- 200
+nsim <- 100
 ntasks <- nsim
 progress <- function(n, tag) {
   mod <- 16
@@ -248,7 +248,6 @@ for (frac in frac.vec) {
   
   all.y <- matrix(unlist(res[,"y"]), nrow = dim(res), byrow = TRUE)
   sd <- attr(res, "rng")
-  browser()
   for (B in B.vec) {
     if (B == 1) {
       names1 <- c("carve","carvefw", "split", "splitfw")
