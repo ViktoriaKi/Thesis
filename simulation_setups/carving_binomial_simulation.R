@@ -17,8 +17,6 @@ require(parallel)
 require(doRNG)
 require(tmg)
 require(git2r)
-# 21/3/23 JMH for unlisting pvals
-require(purrr)
 
 commit <- revparse_single(revision = "HEAD")
 print(paste("Run on commit", commit$sha, 'i.e.:', commit$summary))
@@ -49,10 +47,10 @@ print (x[1,1])
 xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
-B.vec <- c(1, 5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
+B.vec <- c(1, 3) # c(1, (1:5) * 10) # number of splits
 frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
 
-nsim <- 100
+nsim <- 3
 ntasks <- nsim
 progress <- function(n, tag) {
   mod <- 16
@@ -195,13 +193,20 @@ for (frac in frac.vec) {
                                      }
                                    }
                                    # 20/3/23 JMH/VK adapt and add R, TS, V for all values
-                                   R <- length(which(mcr[[1]]$sel.models)) / B
-                                   TS <- sum(ind %in% which(mcr[[1]]$sel.models, arr.ind = TRUE)[,2]) / B
+                                   # 23/3/23 JMH/VK add row subset to B rows to make calculations correct
+                                   R <- length(which(mcr[[1]]$sel.models[1:B, ])) / B
+                                   if (B == 1) {
+                                     TS <- sum(which(mcr[[1]]$sel.models[1:B, ], arr.ind = TRUE) %in% ind) / B
+                                   }
+                                   else {
+                                     TS <- sum(which(mcr[[1]]$sel.models[1:B, ], arr.ind = TRUE)[,2] %in% ind) / B
+                                   }
                                    V <- R - TS
                                    run.res <- c(run.res, R, TS, V)
                                    if (B == 1) {
                                      # analyse first split specially for B = 1 and analyse carve100
                                      R <- length(which(mcr[[1]]$sel.models[1, ])) # number of variables selected in first split
+                                     # Does TS need to be a float and not binary?
                                      TS <- sum(ind %in% which(mcr[[1]]$sel.models[1, ])) # number of active variables selected
                                      V <- R - TS # number of inactive variables selected
                                      carve.err <- sum(pvals.aggregated[[1]][-ind] < level) # number of false rejection from single-carving #17/02/23 VK, setting significance level only once
