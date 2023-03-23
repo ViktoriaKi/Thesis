@@ -1,18 +1,9 @@
-# Uncommenct to install "tmg", R Tools needs to be installed beforehand
-# url <- "https://cran.r-project.org/src/contrib/Archive/tmg/tmg_0.3.tar.gz"
-# pkgFile <- "tmg_0.3.tar.gz"
-# download.file(url = url, destfile = pkgFile)
-# # Install package
-# install.packages(pkgs=pkgFile, type="source", repos=NULL)
-# # Delete package tarball
-# unlink(pkgFile)
-
 rm(list = ls(all = TRUE))
 save <- TRUE
 
 if (save) {
   newdir <- format(Sys.time(), "%d-%b-%Y %H.%M")
-  dir.create(paste("./simulation_setups/multi_carve/Binomial_", newdir, sep=""), recursive = TRUE) 
+  dir.create(paste("simulation_setups/multi_carve/Binomial_", newdir, sep="")) 
 }
 
 require(MASS)
@@ -26,6 +17,8 @@ require(parallel)
 require(doRNG)
 require(tmg)
 require(git2r)
+# 21/3/23 JMH for unlisting pvals
+require(purrr)
 
 commit <- revparse_single(revision = "HEAD")
 print(paste("Run on commit", commit$sha, 'i.e.:', commit$summary))
@@ -38,20 +31,16 @@ source("inference/sample_from_truncated.R")
 source("inference/tryCatch-W-E.R")
 
 # toeplitz
-
 n <- 100
 p <- 200
 rho <- 0.6
+level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)
 ind <- sel.index
 beta <- rep(0, p)
-beta[sel.index] <- 2
-sparsity <- 5
-
-B.vec <- c(1, 5, 10, 20, 50) # number of splits
-frac.vec <- c(0.5,0.75, 0.8, 0.9 , 0.99) # selection fraction
-
+beta[sel.index] <- 1
+sparsity <- length(sel.index) # 17/02/23 VK, changed so that value automatically updates
 set.seed(42) # to make different methods comparable, fix the x-matrix
 x <- mvrnorm(n, rep(0, p), Cov)
 print (x[1,1])
@@ -59,6 +48,9 @@ print (x[1,1])
 
 xb <- x %*% beta
 p.true <- 1-exp(-exp(xb))
+
+B.vec <- c(1, 5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
+frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
 
 nsim <- 100
 ntasks <- nsim
@@ -88,7 +80,7 @@ for (frac in frac.vec) {
   
   # parallelization
   # choose different number of cores if wished
-  cl<- makeSOCKcluster(8) 
+  cl<- makeSOCKcluster(16)
   
   rseed <- seed.v[seed.n]
   clusterSetRNGStream(cl, iseed = rseed) #make things reproducible
@@ -99,23 +91,20 @@ for (frac in frac.vec) {
                              "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
                                # alternative if sequential computation is preferred
                                # res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
-                               
                                ylim <- runif(n)
                                y <- rep(0, n)
                                y[ylim < p.true] <- 1
                                
-                               print("HERE")
                                mcrtry <- tryCatch_W_E(multi.carve(x, y, B = B, fraction = frac, model.selector = lasso.firstqcoef, classical.fit = glm.pval.pseudo,
                                                                   parallel = FALSE, ncores = getOption("mc.cores", 2L), gamma = 1, skip.variables = FALSE,
                                                                   args.model.selector = list(standardize = FALSE, q = 16, intercept = TRUE, tol.beta = 0),
                                                                   args.classical.fit =list(), verbose = FALSE, FWER = FALSE, split.pval = TRUE, family = "binomial",
                                                                   return.selmodels = TRUE, return.nonaggr = TRUE), 0)
-                               print("HERE2")
+                               
                                c100try <- tryCatch_W_E(carve100(x, y, model.selector = lasso.firstqcoef,
                                                                 args.model.selector = list(standardize = FALSE, q = 16, intercept = TRUE, tol.beta = 1e-5),
                                                                 verbose = FALSE, FWER = FALSE, return.selmodels = TRUE,
                                                                 family = "binomial"), 0)
-                               print("HERE3")
                                
                                out.list <- list()
                                out.list$y <- y
@@ -141,32 +130,45 @@ for (frac in frac.vec) {
                                  model.size <- apply(mcr[[1]]$sel.models, 1, sum)
                                  model.size[model.size == 0]  <- 1 # if no variable is selected, p-values are 1
                                  # ommit the clipping to calculate adjusted power
-                                 # pcarve.fwer <- pmin(pcarve.nofwer * model.size, 1)
-                                 # psplit.fwer <- pmin(psplit.nofwer * model.size, 1)
-                                 pcarve.fwer <- pcarve.nofwer*model.size
-                                 psplit.fwer <- psplit.nofwer*model.size
+                                 # 20/3/23 JMH/VK change from below to cap as in Meinshausen 2.1
+                                 if (B > 1) {
+                                   pcarve.fwer <- pmin(pcarve.nofwer * model.size, 1)
+                                   psplit.fwer <- pmin(psplit.nofwer * model.size, 1)
+                                 }
+                                 else {
+                                   # 20/3/23 JMH/VK applying the single-split method from Meinshausen (2.1)
+                                   pcarve.fwer <- pcarve.nofwer * model.size
+                                   psplit.fwer <- psplit.nofwer * model.size
+                                 }
+                                 # pcarve.fwer <- pcarve.nofwer * model.size
+                                 # psplit.fwer <- psplit.nofwer * model.size
                                  c100 <- c100try$value
                                  pc100.nofwer <- c100$pval.corr
                                  model.size100 <- sum(c100$sel.models)
                                  model.size100[model.size100 == 0]  <- 1
-                                 # pc100.fwer <- pmin(pc100.nofwer * model.size100, 1)
-                                 pc100.fwer <- pc100.nofwer * model.size100
-                                 
+                                 # ommit the clipping to calculate adjusted power
+                                 # 15/2/23 JMH/VK change from below to cap as in Meinshausen 2.1
+                                 if (B > 1) {
+                                   pc100.fwer <- pmin(pc100.nofwer * model.size100, 1)
+                                 }
+                                 else {
+                                   pc100.fwer <- pc100.nofwer * model.size100
+                                 }
+                                 # pc100.fwer <- pc100.nofwer * model.size100
                                  for (B in B.vec) {
                                    if (B > 1) {
-                                     use <- 1:B
+                                     use <- 1:B #JMH/ VK 20/3/23 cutoff from FALSE to TRUE
                                      pvals.aggregated <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                                         round(seq(ceiling(0.05 * B)/B, 1 - 1/B, by = 1/B), 2), cutoff = FALSE)
+                                                                         round(seq(ceiling(0.05 * B)/B, 1 - 1/B, by = 1/B), 2), cutoff = TRUE)
                                      pvals.aggregated2 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                                          round(seq(ceiling(0.3 * B)/B, 1 - 1/B, by = 1/B), 2), cutoff = FALSE)
+                                                                          round(seq(ceiling(0.3 * B)/B, 1 - 1/B, by = 1/B), 2), cutoff = TRUE)
                                      pvals.aggregated3 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                                          round(ceiling(0.05 * B)/B, 2), cutoff = FALSE)
+                                                                          round(ceiling(0.05 * B)/B, 2), cutoff = TRUE)
                                      pvals.aggregated4 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
-                                                                          round(ceiling(0.3 * B)/B, 2), cutoff = FALSE)
+                                                                          round(ceiling(0.3 * B)/B, 2), cutoff = TRUE)
                                    } else {
                                      pvals.aggregated <- list(pcarve.nofwer[1, ], pcarve.fwer[1, ], psplit.nofwer[1, ], psplit.fwer[1, ])
                                    }
-                                   
                                    
                                    run.res <- vector(length = 0) # store important quantities
                                    np <- length(pvals.aggregated)
@@ -192,15 +194,20 @@ for (frac in frac.vec) {
                                        run.res <- c(run.res, true.pv, bad.pv)
                                      }
                                    }
+                                   # 20/3/23 JMH/VK adapt and add R, TS, V for all values
+                                   R <- length(which(mcr[[1]]$sel.models)) / B
+                                   TS <- sum(ind %in% which(mcr[[1]]$sel.models, arr.ind = TRUE)[,2]) / B
+                                   V <- R - TS
+                                   run.res <- c(run.res, R, TS, V)
                                    if (B == 1) {
                                      # analyse first split specially for B = 1 and analyse carve100
                                      R <- length(which(mcr[[1]]$sel.models[1, ])) # number of variables selected in first split
                                      TS <- sum(ind %in% which(mcr[[1]]$sel.models[1, ])) # number of active variables selected
                                      V <- R - TS # number of inactive variables selected
-                                     carve.err <- sum(pvals.aggregated[[1]][-ind] < 0.05)
-                                     split.err <- sum(pvals.aggregated[[3]][-ind] < 0.05)
+                                     carve.err <- sum(pvals.aggregated[[1]][-ind] < level) # number of false rejection from single-carving #17/02/23 VK, setting significance level only once
+                                     split.err <- sum(pvals.aggregated[[3]][-ind] < level) # number of false rejection from single-splitting #17/02/23 VK, setting significance level only once
                                      carve100.err <- sum(pc100.nofwer[-ind] < 0.05)
-                                     run.res <- c(run.res, R, V, TS) 
+                                     # run.res <- c(run.res, R, V, TS) #20/3/23 JMH, VK commented out 
                                      true.pv <- pc100.nofwer[ind]
                                      bad.pv <- min(pc100.nofwer[-ind])
                                      R100 <- length(which(c100$sel.models))
@@ -213,6 +220,11 @@ for (frac in frac.vec) {
                                                   carve.err, split.err, carve100.err)
                                    }
                                    out.list[[as.character(B)]] <- run.res
+                                   # 22/3/23 JMH add pvals aggregated
+                                   out.list[[paste0(as.character(B), '_carveNoFWER')]] <- pcarve.nofwer
+                                   out.list[[paste0(as.character(B), '_carveFWER')]] <- pcarve.fwer
+                                   out.list[[paste0(as.character(B), '_splitNoFWER')]] <- psplit.nofwer
+                                   out.list[[paste0(as.character(B), '_splitFWER')]] <- psplit.fwer
                                  }
                                  err <- if (is.null(mcrtry$error) && is.null(c100try$error)) NA
                                  else c(mcrtry$error, c100try$error) # should not happen due to earlier check
@@ -226,16 +238,16 @@ for (frac in frac.vec) {
                              }
   toc()
   stopCluster(cl)
-  
   # analyse results for given fraction
   expmatr <- matrix(unlist(res[, "exception"]), nrow = dim(res)[1], ncol = 2, byrow = TRUE)
   print(sum(is.na(expmatr[, 1])))
   succ = which(is.na(expmatr[, 1]))
   print("succesful runs")
   
+  listPvals <- list()
+  
   all.y <- matrix(unlist(res[,"y"]), nrow = dim(res), byrow = TRUE)
   sd <- attr(res, "rng")
-  
   for (B in B.vec) {
     if (B == 1) {
       names1 <- c("carve","carvefw", "split", "splitfw")
@@ -248,20 +260,33 @@ for (frac in frac.vec) {
                             rep(names2, each = (sparsity + 1)), "R100", "V100",
                             "R-V100", "carve.err", "split.err", "carve100.err")
       names <- c(names1, names2)
+      # 22/3/23 JMH add pvals aggregated
+      listPvals[[paste0(as.character(B), '_carveNoFWER')]] <- res[, paste0(as.character(B), '_carveNoFWER')]
+      listPvals[[paste0(as.character(B), '_carveFWER')]] <- res[, paste0(as.character(B), '_carveFWER')]
+      listPvals[[paste0(as.character(B), '_splitNoFWER')]] <- res[, paste0(as.character(B), '_splitNoFWER')]
+      listPvals[[paste0(as.character(B), '_splitFWER')]] <- res[, paste0(as.character(B), '_splitFWER')]
     } else {
       names<-c("carve5", "carvefw5", "split5", "splitfw5", "carve30",
                "carvefw30", "split30", "splitfw30", "carvefix5",
                "carvefwfix5", "splitfix5", "splitfwfix5", "carvefix30",
                "carvefwfix30", "splitfix30", "splitfwfix30")
       subres <- matrix(unlist(res[,as.character(B)]), nrow = dim(res)[1],
-                       ncol = 16 * (sparsity+1), byrow = TRUE)
+                       ncol = length(names) * (sparsity + 1) + 3, byrow = TRUE) #17/02/23 VK, replacing 16, +3 for R, V, R-V
       if (any(!is.na(subres[-succ, ]))) print("not as it should be")
       subres <- subres[succ,]
-      colnames(subres) <- c(rep(names, each = (sparsity + 1)))
+      # 20/3/23 JMH/VK add R, V, R-V cols
+      colnames(subres) <- c(rep(names, each = (sparsity + 1)), "R", "V", "R-V")
+      # 22/3/23 JMH add pvals aggregated
+      listPvals[[paste0(as.character(B), '_carveNoFWER')]] <- res[, paste0(as.character(B), '_carveNoFWER')]
+      listPvals[[paste0(as.character(B), '_carveFWER')]] <- res[, paste0(as.character(B), '_carveFWER')]
+      listPvals[[paste0(as.character(B), '_splitNoFWER')]] <- res[, paste0(as.character(B), '_splitNoFWER')]
+      listPvals[[paste0(as.character(B), '_splitFWER')]] <- res[, paste0(as.character(B), '_splitFWER')]
     }
     subres <- as.data.frame(subres)
+    # 20/3/23 VK add selection index, 22/3/23 JMH/VK add pvals.aggregated
     simulation <- list("results" = subres, "exceptions" = expmatr, "y" = all.y, "B" = B, "split" = frac,
-                       "nsim" = nsim, "seed" = rseed, "All used B" = B.vec, "sd" = sd, "commit" = commit)
+                       "nsim" = nsim, "seed" = rseed, "All used B" = B.vec, "sd" = sd, "commit" = commit, "sparsity"=sparsity, "sel.index"=sel.index,
+                       "pvals.aggregated" = listPvals)
     print(paste("results using fraction ", frac, " and B=", B, sep = ""))
     if (B == 1) {
       print(mean(subres$`R-V` == sparsity)) # probability of screening
@@ -283,7 +308,7 @@ for (frac in frac.vec) {
     for (name in names) {
       nameind <- which(colnames(subres) == name)
       mat <- subres[, nameind]
-      rej <- quantile(mat[, sparsity + 1], 0.05, na.rm = TRUE)
+      rej <- quantile(mat[, sparsity + 1], level, na.rm = TRUE) #17/02/23 VK, setting significance level only once
       rejmat <- mat[, 1:sparsity] < rej
       allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
       
@@ -296,8 +321,8 @@ for (frac in frac.vec) {
     for (name in names) {
       nameind <- which(colnames(subres) == name)
       mat <- subres[, nameind]
-      fwer[as.character(name)] <- mean(mat[,sparsity + 1] < 0.05, na.rm = TRUE)
-      rejmat <- mat[, 1:sparsity] < 0.05
+      fwer[as.character(name)] <- mean(mat[,sparsity + 1] < level, na.rm = TRUE)#20/3/23 0.05 to level
+      rejmat <- mat[, 1:sparsity] < level #VK 20/3/23 level 
       allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
     }
     print(fwer) # FWER
@@ -311,6 +336,3 @@ for (frac in frac.vec) {
 }
 
 print("Finale")
-
-
-
