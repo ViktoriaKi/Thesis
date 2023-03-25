@@ -233,9 +233,14 @@ for (frac in frac.vec) {
                                        run.res <- c(run.res, true.pv, bad.pv)
                                      }
                                    }
-                                   # 23/2/23 JMH/VK adapt and add R, TS, V for all values
-                                   R <- length(which(mcr[[1]]$sel.models)) / B
-                                   TS <- sum(ind %in% which(mcr[[1]]$sel.models, arr.ind = TRUE)[,2]) / B
+                                   # 25/3/23 JMH/VK add row subset to B rows to make calculations correct
+                                   R <- length(which(mcr[[1]]$sel.models[1:B, ])) / B
+                                   if (B == 1) {
+                                     TS <- sum(which(mcr[[1]]$sel.models[1:B, ], arr.ind = TRUE) %in% ind) / B
+                                   }
+                                   else {
+                                     TS <- sum(which(mcr[[1]]$sel.models[1:B, ], arr.ind = TRUE)[,2] %in% ind) / B
+                                   }
                                    V <- R - TS
                                    run.res <- c(run.res, R, TS, V)
                                    if (B == 1) {

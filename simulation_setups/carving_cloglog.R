@@ -33,7 +33,7 @@ source("inference/tryCatch-W-E.R")
 # toeplitz
 n <- 100
 p <- 200
-rho <- 0.6
+rho <- 0
 level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)
@@ -47,7 +47,7 @@ print (x[1,1])
 # should create the right x on D-MATH server, x[1 ,1] = 0.958
 
 xb <- x %*% beta
-p.true <- 1-exp(-exp(xb))
+p.true <- 1 - exp(-exp(xb))
 
 B.vec <- c(1, 5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
 frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
@@ -195,8 +195,14 @@ for (frac in frac.vec) {
                                      }
                                    }
                                    # 20/3/23 JMH/VK adapt and add R, TS, V for all values
-                                   R <- length(which(mcr[[1]]$sel.models)) / B
-                                   TS <- sum(ind %in% which(mcr[[1]]$sel.models, arr.ind = TRUE)[,2]) / B
+                                   # 25/3/23 JMH/VK add row subset to B rows to make calculations correct
+                                   R <- length(which(mcr[[1]]$sel.models[1:B, ])) / B
+                                   if (B == 1) {
+                                     TS <- sum(which(mcr[[1]]$sel.models[1:B, ], arr.ind = TRUE) %in% ind) / B
+                                   }
+                                   else {
+                                     TS <- sum(which(mcr[[1]]$sel.models[1:B, ], arr.ind = TRUE)[,2] %in% ind) / B
+                                   }
                                    V <- R - TS
                                    run.res <- c(run.res, R, TS, V)
                                    if (B == 1) {
