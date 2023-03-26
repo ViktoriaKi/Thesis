@@ -266,6 +266,11 @@ for (frac in frac.vec) {
                                      print(run.res)
                                    }
                                    out.list[[as.character(B)]] <- run.res
+                                   # 26/3/23 JMH/VK add pvals aggregated
+                                   out.list[[paste0(as.character(B), '_carveNoFWER')]] <- pcarve.nofwer
+                                   out.list[[paste0(as.character(B), '_carveFWER')]] <- pcarve.fwer
+                                   out.list[[paste0(as.character(B), '_splitNoFWER')]] <- psplit.nofwer
+                                   out.list[[paste0(as.character(B), '_splitFWER')]] <- psplit.fwer
                                  }
                                  err <- if (is.null(mcrtry$error) && is.null(c100try$error)) NA
                                  else c(mcrtry$error, c100try$error) # should not happen due to earlier check
@@ -303,6 +308,11 @@ for (frac in frac.vec) {
                             rep(names2, each = (sparsity + 1)), "R100", "V100",
                             "R-V100", "carve.err", "split.err", "carve100.err")
       names <- c(names1, names2)
+      # 26/3/23 JMH/VK add pvals aggregated
+      listPvals[[paste0(as.character(B), '_carveNoFWER')]] <- res[, paste0(as.character(B), '_carveNoFWER')]
+      listPvals[[paste0(as.character(B), '_carveFWER')]] <- res[, paste0(as.character(B), '_carveFWER')]
+      listPvals[[paste0(as.character(B), '_splitNoFWER')]] <- res[, paste0(as.character(B), '_splitNoFWER')]
+      listPvals[[paste0(as.character(B), '_splitFWER')]] <- res[, paste0(as.character(B), '_splitFWER')]
     } else {
       names <- c("carve5", "carvefw5", "split5", "splitfw5", "carve30",
                  "carvefw30", "split30", "splitfw30", "carvefix5",
@@ -314,13 +324,19 @@ for (frac in frac.vec) {
       subres <- subres[succ,]
       # 23/2/23 JMH/VK add R, V, R-V cols
       colnames(subres) <- c(rep(names, each = (sparsity + 1)), "R", "V", "R-V")
+      # 26/3/23 JMH/VK add pvals aggregated
+      listPvals[[paste0(as.character(B), '_carveNoFWER')]] <- res[, paste0(as.character(B), '_carveNoFWER')]
+      listPvals[[paste0(as.character(B), '_carveFWER')]] <- res[, paste0(as.character(B), '_carveFWER')]
+      listPvals[[paste0(as.character(B), '_splitNoFWER')]] <- res[, paste0(as.character(B), '_splitNoFWER')]
+      listPvals[[paste0(as.character(B), '_splitFWER')]] <- res[, paste0(as.character(B), '_splitFWER')]
     }
     subres <- as.data.frame(subres)
     
     # 15/2/23 VK add selection index, 2/3/23 JMH/VK add pvals.aggregated
+    # 26/3/23 JMH/VK change pvals aggregated to be listPvals
     simulation <- list("results" = subres, "exceptions" = expmatr, "y" = all.y, "B" = B, "split" = frac,
                        "nsim" = nsim, "seed" = rseed, "All used B" = B.vec, "sd" = sd, "commit" = commit, "sparsity"=sparsity, "sel.index"=sel.index,
-                       "pvals.aggregated" = pvals.aggregated)
+                       "pvals.aggregated" = listPvals)
     
     print(paste("results using fraction ", frac, " and B=", B, sep = ""))
     if (B == 1) {
