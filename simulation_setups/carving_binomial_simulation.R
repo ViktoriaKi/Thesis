@@ -29,7 +29,7 @@ source("inference/sample_from_truncated.R")
 source("inference/tryCatch-W-E.R")
 
 # toeplitz
-n <- 50
+n <- 100
 p <- 200
 rho <- 0
 level<-0.05 #17/02/23 VK, setting significance level only once
@@ -37,7 +37,7 @@ Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)
 ind <- sel.index
 beta <- rep(0, p)
-beta[sel.index] <- 1
+beta[sel.index] <- 7.5
 sparsity <- length(sel.index) # 17/02/23 VK, changed so that value automatically updates
 set.seed(42) # to make different methods comparable, fix the x-matrix
 x <- mvrnorm(n, rep(0, p), Cov)
