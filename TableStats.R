@@ -4,7 +4,7 @@ library(BBmisc)
 library(readxl)
 library(stringr)
 
-setwd('/Users/jackheller/KU/Thesis/Thesis/simulation_setups/multi_carve')
+setwd('C:/Users/viki1/Documents/Uni/Thesis/Thesis/simulation_setups/multi_carve')
 
 calculatePower <- function(subres, sparsity) {
   names<-c("carve5", "carvefw5", "split5", "splitfw5", "carve30",
@@ -64,7 +64,11 @@ calculateExpectations <- function(subres, sparsity) {
   return(list(EV, ERV, FDR))
 }
 
+<<<<<<< HEAD
 simDf <- read_excel('simulations.xlsx')[8,]
+=======
+simDf <- read_excel('simulations.xlsx')[1,]
+>>>>>>> cfacece2965875c92e9c25d7081f7fa2ba3ab827
 simDf$Time <-str_pad(simDf$Time, width=5, side="left", pad="0")
 
 mainFunc <- function() {
