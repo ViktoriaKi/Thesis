@@ -94,14 +94,15 @@ for (frac in frac.vec) {
                                y <- rep(0, n)
                                y[ylim < p.true] <- 1
                                
+                               # JMH 4/18/23change q for args.model.selector from q = 16 to q = n / 6
                                mcrtry <- tryCatch_W_E(multi.carve(x, y, B = B, fraction = frac, model.selector = lasso.firstqcoef, classical.fit = glm.pval.pseudo,
                                                                   parallel = FALSE, ncores = getOption("mc.cores", 2L), gamma = 1, skip.variables = FALSE,
-                                                                  args.model.selector = list(standardize = FALSE, q = 16, intercept = TRUE, tol.beta = 0),
+                                                                  args.model.selector = list(standardize = FALSE, q = floor(n/6), intercept = TRUE, tol.beta = 0),
                                                                   args.classical.fit =list(), verbose = FALSE, FWER = FALSE, split.pval = TRUE, family = "binomial",
                                                                   return.selmodels = TRUE, return.nonaggr = TRUE), 0)
                                
                                c100try <- tryCatch_W_E(carve100(x, y, model.selector = lasso.firstqcoef,
-                                                                args.model.selector = list(standardize = FALSE, q = 16, intercept = TRUE, tol.beta = 1e-5),
+                                                                args.model.selector = list(standardize = FALSE, q = floor(n/6), intercept = TRUE, tol.beta = 1e-5),
                                                                 verbose = FALSE, FWER = FALSE, return.selmodels = TRUE,
                                                                 family = "binomial"), 0)
                                
