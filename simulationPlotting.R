@@ -74,7 +74,7 @@ mainFunc <- function() {
   colnames(powerMat) <- intCols
   colnames(fwerMat) <- intCols
   B.vec <- c(5, 10, 20, 50) # number of splits
-  frac.vec <- c(0.5,0.75, 0.8, 0.9 , 0.99) # selection fraction
+  frac.vec <- c(0.5,0.75, 0.9 , 0.99) # selection fraction
   sparsity <- 5
   for (B in B.vec) {
     for (frac in frac.vec) {

@@ -24,6 +24,21 @@ calculatePower <- function(subres, sparsity) {
   return(list(allrej, fwer))
 }
 
+calculatePowerB1 <- function(subres, sparsity) {
+  names<-c("carve", "carvefw", "split", "splitfw")
+  allrej <- matrix(NA, nrow = 1,ncol = length(names))
+  fwer <- numeric()
+  colnames(allrej) <- names
+  for (name in names) {
+    nameind <- which(colnames(subres) == name)
+    mat <- subres[, nameind]
+    fwer[as.character(name)] <- mean(mat[,sparsity + 1] < 0.05, na.rm = TRUE)
+    rejmat <- mat[, 1:sparsity] < 0.05
+    allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
+  }
+  return(list(allrej, fwer))
+}
+
 calculatePScreen <- function(subres, sparsity) {
   names<-c("carve5", "carvefw5", "split5", "splitfw5", "carve30",
            "carvefw30", "split30", "splitfw30", "carvefix5",
@@ -64,11 +79,30 @@ calculateExpectations <- function(subres, sparsity) {
   return(list(EV, ERV, FDR))
 }
 
-simDf <- read_excel('simulations.xlsx')[8,]
+calculateExpectationsB1 <- function(subres, sparsity) {
+  names<-c("carve", "carvefw", "split", "splitfw")
+  EV <- matrix(NA, nrow = 1, ncol = length(names))
+  colnames(EV) <- names
+  ERV <- matrix(NA, nrow = 1, ncol = length(names))
+  colnames(ERV) <- names
+  FDR <- matrix(NA, nrow = 1, ncol = length(names))
+  colnames(FDR) <- names
+  for (name in names) {
+    nameind <- which(colnames(subres) == name)
+    mat <- subres[, nameind]
+    
+    EV[, as.character(name)] <- mean(subres$`R-V`)
+    ERV[, as.character(name)] <- mean(subres$V)
+    FDR[, as.character(name)] <- mean(subres$`R-V` / pmax(subres$R, 1))
+  }
+  return(list(EV, ERV, FDR))
+}
+
+simDf <- read_excel('simulations.xlsx')[9,]
 simDf$Time <-str_pad(simDf$Time, width=5, side="left", pad="0")
 
 mainFunc <- function() {
-  B.vec <- c(5, 10, 20, 50) # number of splits
+  B.vec <- c(1, 5, 10, 20, 50) # number of splits
   frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
   sparsity <- 5
   intCols <- c('carve5', 'split5', 'carve30', 'split30')
@@ -98,52 +132,82 @@ mainFunc <- function() {
           return(curDat)
         })
         if (B == 1) {
-          retList <- calculatePower(curDat, sparsity)
+          retList <- calculatePowerB1(curDat, sparsity)
         }
         else {
           retList <- calculatePower(curDat, sparsity)
         }
+
         power <- retList[[1]]
         fwer <- retList[[2]]
         
-        # create dummy matrix to load
-        curMat <- matrix(NA, nrow = 4, ncol = ncol(finMat))
-        rownames(curMat) <- c(paste0('carve_gam5_B=', B, 'select=', frac), paste0('split_gam5_B=', B, 'select=', frac),
-                              paste0('carve_gam30_B=', B, 'select=', frac), paste0('split_gam30_B=', B, 'select=', frac))
+        if (B == 1) {
+          # create dummy matrix to load
+          curMat <- matrix(NA, nrow = 2, ncol = ncol(finMat))
+          rownames(curMat) <- c(paste0('carve_B=', B, 'select=', frac), paste0('split_B=', B, 'select=', frac))
+          
+          curMat[1, 5] <- power[2]
+          curMat[2, 5] <- power[4]
+          
+          curMat[1, 3] <- fwer[2]
+          curMat[2, 3] <- fwer[4]
+        }
+        else {
+          # create dummy matrix to load
+          curMat <- matrix(NA, nrow = 4, ncol = ncol(finMat))
+          rownames(curMat) <- c(paste0('carve_gam5_B=', B, 'select=', frac), paste0('split_gam5_B=', B, 'select=', frac),
+                                paste0('carve_gam30_B=', B, 'select=', frac), paste0('split_gam30_B=', B, 'select=', frac))
+          # load power
+          curMat[1, 5] <- power[2]
+          curMat[2, 5] <- power[4]
+          curMat[3, 5] <- power[6]
+          curMat[4, 5] <- power[8]
+          
+          # load fwer
+          curMat[1, 3] <- fwer[2]
+          curMat[2, 3] <- fwer[4]
+          curMat[3, 3] <- fwer[6]
+          curMat[4, 3] <- fwer[8]
+        }
         
-        # load power
-        curMat[1, 5] <- power[2]
-        curMat[2, 5] <- power[4]
-        curMat[3, 5] <- power[6]
-        curMat[4, 5] <- power[8]
-        
-        # load fwer
-        curMat[1, 3] <- fwer[2]
-        curMat[2, 3] <- fwer[4]
-        curMat[3, 3] <- fwer[6]
-        curMat[4, 3] <- fwer[8]
-        
-        # capture EV and ERV
-        expectations <- calculateExpectations(curDat, sparsity)
+        if (B == 1) {
+          expectations <- calculateExpectationsB1(curDat, sparsity)
+        }
+        else {
+          # capture EV and ERV
+          expectations <- calculateExpectations(curDat, sparsity)
+        }
         EV <- expectations[[1]]
         ERV <- expectations[[2]]
         FDR <- expectations[[3]]
         
-        curMat[1, 1] <- EV[2]
-        curMat[2, 1] <- EV[4]
-        curMat[3, 1] <- EV[6]
-        curMat[4, 1] <- EV[8]
-        
-        curMat[1, 2] <- ERV[2]
-        curMat[2, 2] <- ERV[4]
-        curMat[3, 2] <- ERV[6]
-        curMat[4, 2] <- ERV[8]
-        
-        curMat[1, 4] <- FDR[2]
-        curMat[2, 4] <- FDR[4]
-        curMat[3, 4] <- FDR[6]
-        curMat[4, 4] <- FDR[8]
-        
+        if (B == 1) {
+          curMat[1, 1] <- EV[2]
+          curMat[2, 1] <- EV[4]
+          
+          curMat[1, 2] <- ERV[2]
+          curMat[2, 2] <- ERV[4]
+          
+          curMat[1, 4] <- FDR[2]
+          curMat[2, 4] <- FDR[4]
+        }
+        else {
+          curMat[1, 1] <- EV[2]
+          curMat[2, 1] <- EV[4]
+          curMat[3, 1] <- EV[6]
+          curMat[4, 1] <- EV[8]
+          
+          curMat[1, 2] <- ERV[2]
+          curMat[2, 2] <- ERV[4]
+          curMat[3, 2] <- ERV[6]
+          curMat[4, 2] <- ERV[8]
+          
+          curMat[1, 4] <- FDR[2]
+          curMat[2, 4] <- FDR[4]
+          curMat[3, 4] <- FDR[6]
+          curMat[4, 4] <- FDR[8]
+          
+        }
         finMat <- rbind(finMat, curMat)
       }
     }

@@ -29,15 +29,15 @@ source("inference/sample_from_truncated.R")
 source("inference/tryCatch-W-E.R")
 
 # toeplitz
-n <- 100
-p <- 200
+n <- 50
+p <-75
 rho <- 0
 level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
-sel.index <- c(1, 5, 10, 15, 20)
+sel.index <- c(1, 3)
 ind <- sel.index
 beta <- rep(0, p)
-beta[sel.index] <- 7.5
+beta[sel.index] <- 2
 sparsity <- length(sel.index) # 17/02/23 VK, changed so that value automatically updates
 set.seed(42) # to make different methods comparable, fix the x-matrix
 x <- mvrnorm(n, rep(0, p), Cov)
@@ -47,7 +47,7 @@ print (x[1,1])
 xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
-B.vec <- c(1, 5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
+B.vec <- c(5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
 frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
 
 nsim <- 100
@@ -84,11 +84,12 @@ for (frac in frac.vec) {
   clusterSetRNGStream(cl, iseed = rseed) #make things reproducible
   registerDoSNOW(cl)
   tic()
-  res<-foreach(gu = 1:nsim, .combine = rbind,
-               .packages = c("MASS", "selectiveInference", "glmnet", "Matrix",
-                             "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
+  # res<-foreach(gu = 1:nsim, .combine = rbind,
+  #              .packages = c("MASS", "selectiveInference", "glmnet", "Matrix",
+  #                            "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
                                # alternative if sequential computation is preferred
-                               # res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
+                               res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
+                               browser()
                                ylim <- runif(n)
                                y <- rep(0, n)
                                y[ylim < p.true] <- 1
