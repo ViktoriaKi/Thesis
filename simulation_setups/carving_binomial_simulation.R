@@ -29,8 +29,8 @@ source("inference/sample_from_truncated.R")
 source("inference/tryCatch-W-E.R")
 
 # toeplitz
-n <- 50
-p <-200
+n <- 200
+p <- 100
 rho <- 0
 level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
@@ -48,7 +48,7 @@ xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
 B.vec <- c(1, 5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
-frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
+frac.vec <- c(0.5, 0.75) # selection fraction
 
 nsim <- 100
 ntasks <- nsim
@@ -89,7 +89,6 @@ res<-foreach(gu = 1:nsim, .combine = rbind,
                             "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
                                # alternative if sequential computation is preferred
 #                               res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
-                               browser()
                                ylim <- runif(n)
                                y <- rep(0, n)
                                y[ylim < p.true] <- 1
