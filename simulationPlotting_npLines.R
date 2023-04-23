@@ -73,12 +73,11 @@ calculatePower <- function(subres, sparsity) {
 }
 
 plotVals <- function(df, fwer = NA) {
-  browser()
   legendNames <- colnames(df)
   mypal <- colorRampPalette(c("black", "red", "green", "blue", "orange", "purple", "grey") )(7)
   # jpeg(file=paste0("Power with B = ", B, " Selection Frac = ", frac, ".jpeg"), height = 10, width = 10, units = 'in', res = 300)
   plot(as.numeric(rownames(df)), df[,1], type = "o", col = mypal[1], ylim = c(0, 1), xlim = c(0.5, 1),
-       xlab = "Selection Fraction", ylab = "Power (-)", main = expression(paste("Power with Different n/p Ratios with Carving at B = 50, ", gamma, " = 0.05")), 
+       xlab = "Selection Fraction", ylab = "Power (-)", main = expression(paste("Power with Different n/p Ratios with Carving at B = 20, ", gamma, " = 0.05")), 
        lty = 1, pch = (1 + 14), lwd = 3, cex.lab = 1.5, cex.axis = 1.5)
   for (col in 2:ncol(df)) {
     lines(as.numeric(rownames(df)), df[,col], type = "b", col = mypal[col], lty = col, pch = (col + 14),
@@ -100,7 +99,7 @@ plotVals <- function(df, fwer = NA) {
   # }
   # abline(h = 0.05, col = "grey")
   # legend('topleft',c('','name'),lty=c(1,NA),pch=c(NA,'X'),bg='white',ncol=2)
-  legend(0.5, 0.8, legend=legendNames, col = mypal, lty = 1:4, pch = 15:18, lwd = 3, ncol = 2)
+  legend(0.5, 0.8, legend=round(as.numeric(legendNames), 2), col = mypal, lty = 1:4, pch = 15:18, lwd = 3, ncol = 2)
   # dev.off()
 }
 
@@ -119,7 +118,7 @@ mainFunc <- function() {
   colnames(powerMat) <- npVec
   colnames(fwerMat) <- npVec
   sparsity <- 5
-  for (B in 50) {
+  for (B in 20) {
     for (frac in frac.vec) {
       for (row in 1:nrow(simDf)) {
         curDat <- tryCatch(expr = {
