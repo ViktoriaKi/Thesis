@@ -34,7 +34,9 @@ source("inference/tryCatch-W-E.R")
 
 load(file = "loanappInter.Rdata")
 
-x <- loanapp.inter[, -1]
+x <- as.matrix(loanapp.inter[1:200, -1])
+lincomb <- caret::findLinearCombos(x)
+x <- x[, -lincomb$remove]
 n <- dim(x)[1]
 p <- dim(x)[2]
 report.sigma <- FALSE
@@ -79,21 +81,22 @@ for (frac in frac.vec) {
   clusterSetRNGStream(cl, iseed = rseed) #make things reproducible
   registerDoSNOW(cl)
   tic()
-  res<-foreach(gu = 1:nsim, .combine = rbind,
-               .packages = c("MASS", "selectiveInference", "glmnet", "Matrix",
-                             "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
+  # res<-foreach(gu = 1:nsim, .combine = rbind,
+  #              .packages = c("MASS", "selectiveInference", "glmnet", "Matrix",
+  #                            "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
                                # alternative if sequential computation is preferred
-                               # res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
-                               y<-loanapp.inter[,1]
+                               res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
+                               browser()
+                               y <- as.matrix(loanapp.inter[1:200,1])
                                
-                               mcrtry <- tryCatch_W_E(multi.carve(x, y, B = B, fraction = frac, model.selector = lasso.firstqcoef, classical.fit = glm.pval.pseudo,
+                               mcrtry <- tryCatch_W_E(multi.carve(x, y, B = B, fraction = frac, model.selector = lasso.cvcoef, classical.fit = glm.pval.pseudo,
                                                                   parallel = FALSE, ncores = getOption("mc.cores", 2L), gamma = 1, skip.variables = FALSE,
-                                                                  args.model.selector = list(standardize = FALSE, q = 16, intercept = TRUE, tol.beta = 0),
+                                                                  args.model.selector = list(standardize = FALSE, intercept = TRUE, tol.beta = 1e-15, use.lambda.min = TRUE),
                                                                   args.classical.fit =list(), verbose = FALSE, FWER = FALSE, split.pval = TRUE, family = "binomial",
                                                                   return.selmodels = TRUE, return.nonaggr = TRUE), 0)
                                
-                               c100try <- tryCatch_W_E(carve100(x, y, model.selector = lasso.firstqcoef,
-                                                                args.model.selector = list(standardize = FALSE, q = 16, intercept = TRUE, tol.beta = 1e-5),
+                               c100try <- tryCatch_W_E(carve100(x, y, model.selector = lasso.cvcoef,
+                                                                args.model.selector = list(standardize = TRUE, intercept = TRUE, tol.beta = 1e-15, use.lambda.min = TRUE),
                                                                 verbose = FALSE, FWER = FALSE, return.selmodels = TRUE,
                                                                 family = "binomial"), 0)
                                

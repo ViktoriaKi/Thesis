@@ -467,7 +467,6 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
   p <- ncol(x)
   pvals.v <- rep(1,p)
   sel.models <- logical(p)
-
   thresh.count <- 0L
   threshn <- 1e-7
   split.again <- FALSE
@@ -484,7 +483,6 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
   thresh.count <- 0
   p.sel <- length(sel.model)
   if (p.sel == 0) fit.again <- FALSE
-  
   while (fit.again) {
     fit.again <- FALSE
     checktry <- tryCatch_W_E(constraint.checker(x, y, beta, 0, lambda, family,
@@ -518,7 +516,6 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
       } else {
         sel.model <- which(abs(beta) > args.model.selector$tol.beta * sqrt(nrow(x) / colSums(x ^ 2))) # model indices
       }
-      
       if (family == "binomial") beta <- coefs
       p.sel <- length(sel.model)
       if (p.sel == 0) fit.again <- FALSE
@@ -610,13 +607,14 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
   } else {
     sel.models <- NA
   }
-  
   if (return.selmodels) {
+    # 23/4/23 JMH add beta to list to capture coefficients
     keep <- c("return.selmodels", "x", "y", 
-              "pvals", "sel.models", "FWER")
+              "pvals", "sel.models", "FWER", "beta")
     rm(list = setdiff(names(environment()), keep))
   }
-  structure(list(pval.corr = pvals, sel.models = sel.models,  FWER= FWER,
+  # 23/4/23 JMH add coefs as an argument to capture coefficients
+  structure(list(pval.corr = pvals, sel.models = sel.models,  FWER = FWER, coefs = beta,
                  method = "carve100", call = match.call()), class = "carve")
 }
 

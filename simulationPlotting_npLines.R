@@ -77,7 +77,7 @@ plotVals <- function(df, fwer = NA) {
   mypal <- colorRampPalette(c("black", "red", "green", "blue", "orange", "purple", "grey") )(7)
   # jpeg(file=paste0("Power with B = ", B, " Selection Frac = ", frac, ".jpeg"), height = 10, width = 10, units = 'in', res = 300)
   plot(as.numeric(rownames(df)), df[,1], type = "o", col = mypal[1], ylim = c(0, 1), xlim = c(0.5, 1),
-       xlab = "Selection Fraction", ylab = "Power (-)", main = expression(paste("Power with Different n/p Ratios with Carving at B = 20, ", gamma, " = 0.05")), 
+       xlab = "Selection Fraction", ylab = "Power (-)", main = expression(paste("Power with Different n/p Ratios with Splitting at B = 50, ", gamma, " = 0.05")), 
        lty = 1, pch = (1 + 14), lwd = 3, cex.lab = 1.5, cex.axis = 1.5)
   for (col in 2:ncol(df)) {
     lines(as.numeric(rownames(df)), df[,col], type = "b", col = mypal[col], lty = col, pch = (col + 14),
@@ -118,7 +118,7 @@ mainFunc <- function() {
   colnames(powerMat) <- npVec
   colnames(fwerMat) <- npVec
   sparsity <- 5
-  for (B in 20) {
+  for (B in 50) {
     for (frac in frac.vec) {
       for (row in 1:nrow(simDf)) {
         curDat <- tryCatch(expr = {
@@ -154,14 +154,14 @@ mainFunc <- function() {
         power <- retList[[1]]
         fwer <- retList[[2]]
         if (B == 1) {
-          subPower <- power[1, 'carvefw']
+          subPower <- power[1, 'splitfw']
           powerMat[which(frac == frac.vec), which(as.numeric(simDf[row, 9] / simDf[row, 10]) == npVec)] <- subPower
-          fwerMat[which(frac == frac.vec), which(as.numeric(simDf[row, 9] / simDf[row, 10]) == npVec)] <- fwer['carvefw']
+          fwerMat[which(frac == frac.vec), which(as.numeric(simDf[row, 9] / simDf[row, 10]) == npVec)] <- fwer['splitfw']
         }
         else {
-          subPower <- power[1, 'carvefw5']
+          subPower <- power[1, 'splitfw5']
           powerMat[which(frac == frac.vec), which(as.numeric(simDf[row, 9] / simDf[row, 10]) == npVec)] <- subPower
-          fwerMat[which(frac == frac.vec), which(as.numeric(simDf[row, 9] / simDf[row, 10]) == npVec)] <- fwer['carvefw5']
+          fwerMat[which(frac == frac.vec), which(as.numeric(simDf[row, 9] / simDf[row, 10]) == npVec)] <- fwer['splitfw5']
         }
       }
   }

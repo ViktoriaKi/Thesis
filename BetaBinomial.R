@@ -53,15 +53,15 @@ plot(trials,dbetabinom(trials, size=100, prob=.5), type='h')
 # Setup
 library(stats)
 # toeplitz
-n <- 1000
-p <- 50
+n <- 100
+p <- 200
 rho <- 0
 level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)
 ind <- sel.index
 beta <- rep(0, p)
-beta[sel.index] <-5
+beta[sel.index] <-2
 sparsity <- length(sel.index) # 17/02/23 VK, changed so that value automatically updates
 #set.seed(42) # to make different methods comparable, fix the x-matrix
 x <- mvrnorm(n, rep(0, p), Cov)
@@ -88,7 +88,7 @@ hist(unlist(mylist))
 require('VGAM')
 p.true <- exp(xb) / (1 + exp(xb))
 mean(p.true)
-y<-rbetabinom(n, 1, p.true)
+y<-rbetabinom(n, 1, p.true, rho = 0.8)
 
 trials<-1:100
 mylist <- list()
@@ -130,7 +130,7 @@ Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)
 ind <- sel.index
 beta <- rep(0, p)
-beta[sel.index] <- 1
+beta[sel.index] <- 2
 sparsity <- length(sel.index) 
 set.seed(42) 
 x <- mvrnorm(n, rep(0, p), Cov)
@@ -145,7 +145,6 @@ y[ylim < p.true] <- 1
 
 
 
-
 #--- CLogLog Link ---#
 n <- 100
 p <- 200
@@ -155,7 +154,7 @@ Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)
 ind <- sel.index
 beta <- rep(0, p)
-beta[sel.index] <- 1
+beta[sel.index] <- 2
 sparsity <- length(sel.index) 
 set.seed(42) 
 x <- mvrnorm(n, rep(0, p), Cov)
