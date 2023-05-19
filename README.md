@@ -1,5 +1,5 @@
 # Multicarving for Correct Inference in High-Dimensional Logistic Regression Models
-R code used for the thesis of Jack McManus Heller and Viktoria Kirichenko's Master's Thesis.
+R code used for the Master Thesis of Jack McManus Heller and Viktoria Kirichenko.
 
 The code is adapted from the work of Schultheiss et al. presented in https://arxiv.org/abs/2006.04613.
 
