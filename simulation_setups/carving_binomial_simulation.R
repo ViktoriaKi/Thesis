@@ -92,7 +92,7 @@ res<-foreach(gu = 1:nsim, .combine = rbind,
                                ylim <- runif(n)
                                y <- rep(0, n)
                                y[ylim < p.true] <- 1
-                               
+
                                # JMH 4/18/23change q for args.model.selector from q = 16 to q = n / 6
                                mcrtry <- tryCatch_W_E(multi.carve(x, y, B = B, fraction = frac, model.selector = lasso.firstqcoef, classical.fit = glm.pval.pseudo,
                                                                   parallel = FALSE, ncores = getOption("mc.cores", 2L), gamma = 1, skip.variables = FALSE,

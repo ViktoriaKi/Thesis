@@ -134,7 +134,6 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
             break()
           }
           threshn <- 1e-7 / (100) ^ thresh.count
-          browser()
           #18/02/23 VK, it seems like all variables are fitted, not only the ones selected
           fit <- glmnet(x = x.left, y = y.left, standardize = args.model.selector$standardize,
                         intercept = args.model.selector$intercept, thresh = threshn,family = family)
