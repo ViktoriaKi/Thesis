@@ -17,6 +17,7 @@ require(parallel)
 require(doRNG)
 require(tmg)
 require(git2r)
+require(VGAM)
 
 commit <- revparse_single(revision = "HEAD")
 print(paste("Run on commit", commit$sha, 'i.e.:', commit$summary))
@@ -47,7 +48,21 @@ print (x[1,1])
 xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
-y <- rbetabinom(n, 1, p.true, rho = 0.3)
+ylim <- runif(n)
+y <- rep(0, n)
+y[ylim < p.true] <- 1
+
+y2 <- rbetabinom(n/10, 10, p.true, rho = 0.3)
+
+createY <- function(y, bSize) {
+  finY <- c()
+  for (i in y) {
+    finY <- c(finY, rep(1, i), rep(0, bSize - i))
+  }
+  return(finY)
+}
+
+y2 <- createY(y2, 10)
 
 B.vec <- c(1, 5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
 frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
@@ -94,7 +109,7 @@ res<-foreach(gu = 1:nsim, .combine = rbind,
                                # ylim <- runif(n)
                                # y <- rep(0, n)
                                # y[ylim < p.true] <- 1
-                               
+
                                # JMH 4/18/23change q for args.model.selector from q = 16 to q = n / 6
                                mcrtry <- tryCatch_W_E(multi.carve(x, y, B = B, fraction = frac, model.selector = lasso.firstqcoef, classical.fit = glm.pval.pseudo,
                                                                   parallel = FALSE, ncores = getOption("mc.cores", 2L), gamma = 1, skip.variables = FALSE,

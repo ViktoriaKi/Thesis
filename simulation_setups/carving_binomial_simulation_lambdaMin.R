@@ -34,9 +34,7 @@ p <- 200
 rho <- 0
 level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
-sel.index <- c(1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43,
-               45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71, 73, 75, 77, 79, 81, 83, 85, 87, 89,
-               91, 93, 95, 97, 99)
+sel.index <- c(1, 3, 5, 7, 9, 11, 13, 15, 17, 19)
 ind <- sel.index
 beta <- rep(0, p)
 beta[sel.index] <- 2
@@ -50,7 +48,7 @@ xb <- x %*% beta
 p.true <- exp(xb) / (1 + exp(xb))
 
 B.vec <- c(1, 5, 10, 20, 50) # c(1, (1:5) * 10) # number of splits
-frac.vec <- c(0.5, 0.75, 0.9, 0.95, 0.99) # selection fraction
+frac.vec <- c(0.95) # selection fraction
 
 nsim <- 100
 ntasks <- nsim
@@ -81,7 +79,7 @@ for (frac in frac.vec) {
   # parallelization
   # choose different number of cores if wished
   cl<- makeSOCKcluster(16)
-  
+
   rseed <- seed.v[seed.n]
   clusterSetRNGStream(cl, iseed = rseed) #make things reproducible
   registerDoSNOW(cl)
@@ -90,7 +88,7 @@ for (frac in frac.vec) {
               .packages = c("MASS", "selectiveInference", "glmnet", "Matrix",
                             "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
                                # alternative if sequential computation is preferred
-                              # res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
+                               # res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
                                ylim <- runif(n)
                                y <- rep(0, n)
                                y[ylim < p.true] <- 1

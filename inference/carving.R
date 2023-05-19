@@ -241,6 +241,7 @@ carve.lasso <- function(X, y, ind, beta, tol.beta, lambda, sigma = NULL, family 
         if (i > 5) break()
         observed <- sum(initial * eta)
         lennull <- length(null.statistics)
+
         # calculate p-values on two halves of samples to estimate convergence
         if (beta[chosen[j]] > 0) {
           pval1 <- (sum(null.statistics[1:floor(lennull / 2)] >= observed) + 1) / (floor(lennull / 2) + 1)

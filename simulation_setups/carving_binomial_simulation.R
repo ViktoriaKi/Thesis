@@ -31,7 +31,7 @@ source("inference/tryCatch-W-E.R")
 # toeplitz
 n <- 100
 p <- 200
-rho <- 0
+rho <- 0.9
 level<-0.05 #17/02/23 VK, setting significance level only once
 Cov <- toeplitz(rho ^ (seq(0, p - 1)))
 sel.index <- c(1, 5, 10, 15, 20)

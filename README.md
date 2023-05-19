@@ -1,37 +1,20 @@
-# Multicarving
-R Software for inference using multicarving as presented in https://arxiv.org/abs/2006.04613
+# Multicarving for Correct Inference in High-Dimensional Logistic Regression Models
+R code used for the thesis of Jack McManus Heller and Viktoria Kirichenko's Master's Thesis.
 
-The code for this project consists of the following files: 
- - In /inference/  
-   - 3 files for methodology: hdi_adjustments.R; carving.R; sample_from_truncated.R;   
-   - 1 file for error handling: tryCatch-W-E.R (not my own work);  
- - examples.R;
- - In /simulation_setups/  
-   - 4 files for simulations: carving_simulation.R; carving_binomial_simulation.R; carving_group_simulation; carving_ci_simulation.R
+The code is adapted from the work of Schultheiss et al. presented in https://arxiv.org/abs/2006.04613.
 
+The code consists of the following:
+ - In /inference/
+   - Code used to perform multicarving as described in Schultheiss et al. This has been adapted to capture coefficients.
 
-hdi_adjustments.R: Functions adapted from the ‘hdi’-package in order to change multisplitting routines to multicarving routines. The user will mainly interact with the following four functions; a description of all the available arguments and the output can be found in the respective code for the functions:
-   - multi.carve: Function to execute the whole multicarving process, i.e. selecting a model and infering on each split as well as calculating multicarving p-values. Must at         least provide predictor matrix (x) and response vector (y).
-   - carve100: Function to execute the whole process of pure post-selection inference, i.e. selecting a model and calculating p-values using all data for selection. Must at       least provide predictor matrix (x) and response vector (y).
-   - multi.carve.group: Function to execute the whole multicarving process for groups, i.e. selecting a model and performing groupwise inference on each split as well as           calculate multicarving p-values. Must at least provide predictor matrix (x) and response vector (y) and a list of vectors for the groups that shall be tested.
-   - multi.carve.ci.saturated: Function to determine multicarving confidence intervals using the saturated viewpoint, i.e. selecting a model and infering on each split as         well as calculate multicarving p-values and confindence intervals afterwards. Must at least provide predictor matrix (x) and response vector (y).
-  
-carving.R: Routines to calculate carving p-values. Does the necessary preprocessing as well as the evaluation of the MCMC samples. 
+ - In /simulation_setups/
+   - 6 files for simulations:
+      - carving_binomial_simulation_betabinomial.R for multicarving with Y data generated from a beta-binomial distribution
+      - carving_binomial_simulation_lambdaMin.R for multicarving with a cross-validated Lasso calculated with Lambda_min
+      - carving_binomial_simulation.R for multicarving with simulated data
+      - carving_cloglog.R for multicarving with the misspecified link of Cloglog
+      - carving_loanapp.R for multicarving with real data
 
-sample_from_truncated.R: Hit-and-run MCMC sampler for truncated, multivariate, white Gaussian.
-
-tryCatch-W-E.R: Tries execution of the statement and stores potential errors and warnings. Provided to me by Claude Renaux.
-
-examples.R: Creates a simple data-set on which carving can be performed. The required command for each of the functions above is stated relying on default values for arguments wherever possible. Users are encouraged to play around with non-default parameters as well. 
-
-carving_simulation.R: Executes simulations as described in Section 4.1, default is the Toeplitz design with inference in the selected model. For other scenarios, slight adjustments have to be done. Especially, undo the comments under # riboflavin if doing simulations for the riboflavin data. Do sigma.estimator = "modwise" to estimate σ on a per model base, use_lambda.min = TRUE (in args.model.selector) to do cross-validated lasso using λmin or selected = FALSE (in args.lasso.inference) for inference in the saturated model. Further changes are possible based on user’s needs.
-
-carving_binomial_simulation.R: Executes simulations as described in Section 4.4 Changes are possible based on user’s needs.
-
-carving_group_simulation.R: Executes simulations as described in Section 4.3, default is the dense alternative. Adjustments for the sparse alternative are described through commented code. Further changes are possible based on user’s needs.
-
-carving_ci_simulation.R: Executes simulations as described in section 4.2. Changes are possible based on user’s needs.
-
-All simulation files store the data needed for the analysis. Due to recent changes in the code (that affect some calls of random functions), the obtained results will not be exactly the same as shown in the paper. However, as the methodology is not changed per se, the results should stay fairly similar.
-
+ - In /plotting/: Various scripts for creating different plots for the thesis.
+ - In /tabulation/: Various scripts for tabulating results and calculating performance metrics.
 

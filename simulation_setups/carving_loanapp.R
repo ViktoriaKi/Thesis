@@ -34,20 +34,38 @@ source("inference/tryCatch-W-E.R")
 
 load(file = "loanappInter.Rdata")
 
-x <- as.matrix(loanapp.inter[1:200, -1])
+x <- as.matrix(loanapp.inter[, -1])
+x <- x[, colSums(is.na(x)) == 0]
 lincomb <- caret::findLinearCombos(x)
 x <- x[, -lincomb$remove]
+
+# Find the Duplicated Columns
+duplicated_columns <- duplicated(t(x))
+
+# for (i in colnames(x)) {
+#   ident <- identical(x[,'bd1:mortlat11'],x[,i])
+#   if (ident == TRUE) {
+#     print(i)
+#   }
+# }
+
+# Remove the Duplicated Columns
+x <- x[,!duplicated_columns]
+
 n <- dim(x)[1]
 p <- dim(x)[2]
 report.sigma <- FALSE
-sparsity <- 5 # just setting it to an arbitrary value since we are using a different 
+sel.index <- c(1, 5, 10, 15, 20)
+ind <- sel.index
+sparsity <- length(sel.index)
+level <- 0.05
 # table than the output 
 
 
-B.vec <- c(2) # c(1, (1:5) * 10) # number of splits
+B.vec <- c(1) # c(1, (1:5) * 10) # number of splits
 frac.vec <- c(0.5) # selection fraction
 
-nsim <- 3
+nsim <- 2
 ntasks <- nsim
 progress <- function(n, tag) {
   mod <- 16
@@ -86,20 +104,26 @@ for (frac in frac.vec) {
   #                            "hdi", "tmg", "truncnorm", "tictoc") ,.options.snow=opts) %dorng%{
                                # alternative if sequential computation is preferred
                                res<-foreach(gu = 1:nsim, .combine = rbind) %do%{
+
                                browser()
-                               y <- as.matrix(loanapp.inter[1:200,1])
-                               
+                               y <- as.matrix(loanapp.inter[,1])
+                               c100try <- tryCatch_W_E(carve100(x, y, model.selector = lasso.cvcoef,
+                                                                args.model.selector = list(standardize = FALSE, intercept = TRUE, tol.beta = 1e-5, use.lambda.min = TRUE),
+                                                                verbose = FALSE, FWER = FALSE, return.selmodels = TRUE,
+                                                                family = "binomial"), 0)
+
                                mcrtry <- tryCatch_W_E(multi.carve(x, y, B = B, fraction = frac, model.selector = lasso.cvcoef, classical.fit = glm.pval.pseudo,
                                                                   parallel = FALSE, ncores = getOption("mc.cores", 2L), gamma = 1, skip.variables = FALSE,
                                                                   args.model.selector = list(standardize = FALSE, intercept = TRUE, tol.beta = 1e-15, use.lambda.min = TRUE),
                                                                   args.classical.fit =list(), verbose = FALSE, FWER = FALSE, split.pval = TRUE, family = "binomial",
                                                                   return.selmodels = TRUE, return.nonaggr = TRUE), 0)
                                
-                               c100try <- tryCatch_W_E(carve100(x, y, model.selector = lasso.cvcoef,
-                                                                args.model.selector = list(standardize = TRUE, intercept = TRUE, tol.beta = 1e-15, use.lambda.min = TRUE),
-                                                                verbose = FALSE, FWER = FALSE, return.selmodels = TRUE,
-                                                                family = "binomial"), 0)
-                               
+                               # mcrtry <- c100try
+                               # mcrtry$value[[1]] <- c100try$value
+                               # mcrtry$value[[2]] <- c100try$value
+                               # mcrtry$error <- NULL
+                               # mcrtry$warning <- NULL
+
                                out.list <- list()
                                out.list$y <- y
                                if (!is.null(mcrtry$error) || !is.null(c100try$error)) {
@@ -123,6 +147,15 @@ for (frac in frac.vec) {
                                  psplit.nofwer <- mcr[[2]]$pvals.nonaggr
                                  model.size <- apply(mcr[[1]]$sel.models, 1, sum)
                                  model.size[model.size == 0]  <- 1 # if no variable is selected, p-values are 1
+                                 # 4/27/23 JMH add betas in
+                                 betas.carve100 <- c100try$value$coefs
+                                 betas.carve100.vars <- c100try$value$carCoefs
+                                 betasList <- list()
+                                 betasList[[paste0('carve_coefs')]] <- betas.carve100
+                                 betasList[[paste0('carve_vars')]] <- betas.carve100.vars
+                                 
+                                 out.list$betas <- betasList
+                                 
                                  # ommit the clipping to calculate adjusted power
                                  # 20/3/23 JMH/VK change from below to cap as in Meinshausen 2.1
                                  if (B > 1) {
@@ -161,7 +194,7 @@ for (frac in frac.vec) {
                                      pvals.aggregated4 <- pval.aggregator(list(pcarve.nofwer[use, ], pcarve.fwer[use, ], psplit.nofwer[use, ], psplit.fwer[use, ]),
                                                                           round(ceiling(0.3 * B)/B, 2), cutoff = TRUE)
                                    } else {
-                                     pvals.aggregated <- list(pcarve.nofwer[1, ], pcarve.fwer[1, ], psplit.nofwer[1, ], psplit.fwer[1, ])
+                                     pvals.aggregated <- list(pcarve.nofwer[1,], pcarve.fwer[1,], psplit.nofwer[1,], psplit.fwer[1,])
                                    }
                                    
                                    run.res <- vector(length = 0) # store important quantities
@@ -244,8 +277,20 @@ for (frac in frac.vec) {
   print(sum(is.na(expmatr[, 1])))
   succ = which(is.na(expmatr[, 1]))
   print("succesful runs")
-  
   listPvals <- list()
+
+  # 4/27/23 JMH add betas to return data
+  betasList <- list()
+  counter <- TRUE
+  for (i in res[, "betas"]) {
+    if (counter) {
+    t <- matrix(unlist(i), nrow = 2, byrow = TRUE)
+    colnames(t) <- names(i$carve_vars)
+    
+    betasList[[counter]] <- t
+    counter <- FALSE
+    }
+  }
   
   all.y <- matrix(unlist(res[,"y"]), nrow = dim(res), byrow = TRUE)
   sd <- attr(res, "rng")
@@ -287,47 +332,47 @@ for (frac in frac.vec) {
     # 20/3/23 VK add selection index, 22/3/23 JMH/VK add pvals.aggregated
     simulation <- list("results" = subres, "exceptions" = expmatr, "y" = all.y, "B" = B, "split" = frac,
                        "nsim" = nsim, "seed" = rseed, "All used B" = B.vec, "sd" = sd, "commit" = commit, "sparsity"=sparsity, "sel.index"=sel.index,
-                       "pvals.aggregated" = listPvals)
+                       "pvals.aggregated" = listPvals, "betas" = betasList)
     print(paste("results using fraction ", frac, " and B=", B, sep = ""))
-    if (B == 1) {
-      print(mean(subres$`R-V` == sparsity)) # probability of screening
-      good <- which(subres$`R-V` == sparsity)
-      print(apply(subres[, c("R", "V", "R-V")], 2, mean)) # totally, active, inactive selected
-      # probability of screening using all data for selection
-      print(mean(subres$`R-V100` == sparsity)) 
-      good100 <- which(subres$`R-V100` == sparsity)
-      # totally, active and inacitve selected using all data for selection
-      print(apply(subres[, c("R100", "V100", "R-V100")], 2, mean))
-      print(c(c(sum(subres$carve.err), sum(subres$split.err)) / sum(subres$V),
-              sum(subres$carve100.err) / sum(subres$V100))) # Rejection amongst falsely selected
-      # Rejection amongst falsely selected conditioned on screening, should be below 0.05
-      print(c(c(sum(subres$carve.err[good]), sum(subres$split.err[good])) / sum(subres$V[good]),
-              sum(subres$carve100.err[good100]) / sum(subres$V100[good100]))) 
-    } 
-    allrej <- matrix(NA, nrow = 1,ncol = length(names))
-    colnames(allrej) <- names
-    for (name in names) {
-      nameind <- which(colnames(subres) == name)
-      mat <- subres[, nameind]
-      rej <- quantile(mat[, sparsity + 1], level, na.rm = TRUE) #17/02/23 VK, setting significance level only once
-      rejmat <- mat[, 1:sparsity] < rej
-      allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
-      
-    }
-    print("Adjusted")
-    print(allrej) # adjusted power
-    print("Unadjusted")
-    fwer <- numeric(length(names))
-    names(fwer) <- names
-    for (name in names) {
-      nameind <- which(colnames(subres) == name)
-      mat <- subres[, nameind]
-      fwer[as.character(name)] <- mean(mat[,sparsity + 1] < level, na.rm = TRUE)#20/3/23 0.05 to level
-      rejmat <- mat[, 1:sparsity] < level #VK 20/3/23 level 
-      allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
-    }
-    print(fwer) # FWER
-    print(allrej) # power
+    # if (B == 1) {
+    #   print(mean(subres$`R-V` == sparsity)) # probability of screening
+    #   good <- which(subres$`R-V` == sparsity)
+    #   print(apply(subres[, c("R", "V", "R-V")], 2, mean)) # totally, active, inactive selected
+    #   # probability of screening using all data for selection
+    #   print(mean(subres$`R-V100` == sparsity)) 
+    #   good100 <- which(subres$`R-V100` == sparsity)
+    #   # totally, active and inacitve selected using all data for selection
+    #   print(apply(subres[, c("R100", "V100", "R-V100")], 2, mean))
+    #   print(c(c(sum(subres$carve.err), sum(subres$split.err)) / sum(subres$V),
+    #           sum(subres$carve100.err) / sum(subres$V100))) # Rejection amongst falsely selected
+    #   # Rejection amongst falsely selected conditioned on screening, should be below 0.05
+    #   print(c(c(sum(subres$carve.err[good]), sum(subres$split.err[good])) / sum(subres$V[good]),
+    #           sum(subres$carve100.err[good100]) / sum(subres$V100[good100]))) 
+    # } 
+    # allrej <- matrix(NA, nrow = 1,ncol = length(names))
+    # colnames(allrej) <- names
+    # for (name in names) {
+    #   nameind <- which(colnames(subres) == name)
+    #   mat <- subres[, nameind]
+    #   rej <- quantile(mat[, sparsity + 1], level, na.rm = TRUE) #17/02/23 VK, setting significance level only once
+    #   rejmat <- mat[, 1:sparsity] < rej
+    #   allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
+    #   
+    # }
+    # print("Adjusted")
+    # print(allrej) # adjusted power
+    # print("Unadjusted")
+    # fwer <- numeric(length(names))
+    # names(fwer) <- names
+    # for (name in names) {
+    #   nameind <- which(colnames(subres) == name)
+    #   mat <- subres[, nameind]
+    #   fwer[as.character(name)] <- mean(mat[,sparsity + 1] < level, na.rm = TRUE)#20/3/23 0.05 to level
+    #   rejmat <- mat[, 1:sparsity] < level #VK 20/3/23 level 
+    #   allrej[, as.character(name)] <- mean(rejmat, na.rm = TRUE)
+    # }
+    # print(fwer) # FWER
+    # print(allrej) # power
     resname <- paste0("results ", format(Sys.time(), "%d-%b-%Y %H.%M"),
                       " split=", frac, " B=", B, " seed=", rseed)
     # adjust depending on folder structure

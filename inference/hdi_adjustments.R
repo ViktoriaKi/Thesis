@@ -47,13 +47,12 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
   # method ("multi.carve" or "multi.split"): additional output information
   # call: function call to obtain this carving result
 
-  
   if (!(se.estimator %in% c("1se", "min", "modwise", "None")))
     stop("Sigma estimator must be one of \"1se\", \"min\", \"modwise\" or \"None\" ")
   
   if (!(family %in% c("gaussian", "binomial")))
     stop ("Invalid family provided, can only deal with gaussian and binomial")
-  
+
   args.model.selector$family <- family
   args.lasso.inference$family <- family
   
@@ -135,6 +134,7 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
             break()
           }
           threshn <- 1e-7 / (100) ^ thresh.count
+          browser()
           #18/02/23 VK, it seems like all variables are fitted, not only the ones selected
           fit <- glmnet(x = x.left, y = y.left, standardize = args.model.selector$standardize,
                         intercept = args.model.selector$intercept, thresh = threshn,family = family)
@@ -328,10 +328,9 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
       if (verbose) 
         cat("......Empty model selected. That's ok...\n")
     }
-    
-    
+    # 4/26/23 JMH add beta capture
     list(pvals = pvals.v, sel.models = sel.models, 
-         split = split)
+         split = split, beta = beta)
   }
   inf.out <- if (parallel) {
     stopifnot(isTRUE(is.finite(ncores)), ncores >= 1L)
@@ -350,6 +349,8 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
   if (split.pval) { 
     ls <- list()
     pvalsall <- array(unlist(lapply(inf.out, "[[", "pvals")), dim = c(2, p, B))
+    # 4/27/23 JMH add betasAll
+    betasAll <- array(unlist(lapply(inf.out, "[[", "beta")), dim = c(2, p, B))
     for (icf in  1:2) {
       pvals <- t(pvalsall[icf, , ])
       colnames(pvals) <- colnames(x)
@@ -375,20 +376,21 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
         }
       }
       names(pvals.current) <- names(which.gamma) <- colnames(x)
-      
       if (!return.nonaggr) 
         pvals <- NA
       if (return.selmodels) {
+        # 4/26/23 JMH add beta
         if (icf==2) {
           keep <- c("return.selmodels", "x", "y", "gamma", "inf.out", 
-                    "pvals", "pvals.current", "which.gamma", "sel.models", "FWER","ls","icf")
+                    "pvals", "pvals.current", "which.gamma", "sel.models", "FWER","ls","icf", "betasAll")
           rm(list = setdiff(names(environment()), keep))
         }
       }
       method = "multi.carve"
       if (icf == 2) method = "multi.split"
+      # 4/26/23 JMH add beta to return
       ls[[icf]] <- structure(list(pval.corr = pvals.current, gamma.min = gamma[which.gamma],
-                                  pvals.nonaggr = pvals, sel.models = sel.models, FWER = FWER,
+                                  pvals.nonaggr = pvals, sel.models = sel.models, FWER = FWER, beta = betasAll[icf,,],
                                   method = method, call = match.call()), class = "carve")
       
     }
@@ -416,12 +418,14 @@ multi.carve <- function(x, y, B = 50, fraction = 0.9, gamma = ((1:B)/B)[((1:B)/B
     if (!return.nonaggr) 
       pvals <- NA
     if (return.selmodels) {
+      # 4/26/23 JMH to add beta
       keep <- c("return.selmodels", "x", "y", "gamma", "inf.out", 
-                "pvals", "pvals.current", "which.gamma", "sel.models", "FWER")
+                "pvals", "pvals.current", "which.gamma", "sel.models", "FWER", "beta")
       rm(list = setdiff(names(environment()), keep))
     }
+    # 4/26/23 JMH add beta
     structure(list(pval.corr = pvals.current, gamma.min = gamma[which.gamma],
-                   pvals.nonaggr = pvals, sel.models = sel.models, FWER = FWER,
+                   pvals.nonaggr = pvals, sel.models = sel.models, FWER = FWER, beta = beta,
                    method = "multi.carve", call = match.call()), class = "carve")
   }
 }
@@ -458,7 +462,7 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
   
   args.model.selector$family <- family
   args.lasso.inference$family <- family
-  
+
   if (is.null(args.lasso.inference$sigma)) args.lasso.inference$sigma <- NA
   if (family == "gaussian" && !estimate.sigma && is.na(args.lasso.inference$sigma)) stop("Sigma not provided and estimation not enabled for Gaussian family. This is not ok")
   if (!is.na(args.lasso.inference$sigma)) estimate.sigma <- FALSE
@@ -567,6 +571,9 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
                                                                 tol.beta = args.model.selector$tol.beta,
                                                                 lambda = lambda, intercept = args.model.selector$intercept),
                                                            args.lasso.inference)), 0)
+    # 4/29/23 JMH add in coefs and varCoefs
+    coefs <- fLItry$value$coef0
+    varCoefs <- fLItry$value$vars
     if (!is.null(fLItry$error)) {
       stop(paste(fLItry$error, "stopping carve100", sep=" "))
     } else if (!is.null(fLItry$warning)) {
@@ -601,20 +608,21 @@ carve100 <- function (x, y, FWER = TRUE, family = "gaussian", model.selector = l
       cat("......Empty model selected. That's ok...\n")
   }
   pvals <- pvals.v
-  colnames(pvals) <- colnames(x)
+  # 4/29/23 JMh remove labeling colnames
+  # colnames(pvals) <- colnames(x)
   if (return.selmodels) {
-    colnames(sel.models) <- colnames(x)
+    # colnames(sel.models) <- colnames(x)
   } else {
     sel.models <- NA
   }
   if (return.selmodels) {
     # 23/4/23 JMH add beta to list to capture coefficients
     keep <- c("return.selmodels", "x", "y", 
-              "pvals", "sel.models", "FWER", "beta")
+              "pvals", "sel.models", "FWER", "coefs", "varCoefs")
     rm(list = setdiff(names(environment()), keep))
   }
   # 23/4/23 JMH add coefs as an argument to capture coefficients
-  structure(list(pval.corr = pvals, sel.models = sel.models,  FWER = FWER, coefs = beta,
+  structure(list(pval.corr = pvals, sel.models = sel.models,  FWER = FWER, coefs = coefs, carCoefs = varCoefs,
                  method = "carve100", call = match.call()), class = "carve")
 }
 
@@ -1600,6 +1608,7 @@ glm.pval.pseudo <- function(x, y, maxit = 100, delta.start = 0.01, epsilon = 1e-
     delta.1 <- (1 + pi.hat * delta)/(1 + delta)
     y.tilde <- delta.0 * (1 - y) + delta.1 * y
     pseudo.y <- cbind(y.tilde, 1 - y.tilde)
+
     tryfit <- tryCatch_W_E(glm.pval(x = x, y = pseudo.y, family = "binomial", maxit = maxit, epsilon = epsilon), 0)
     if ("glm.fit: fitted probabilities numerically 0 or 1 occurred" %in% tryfit$warning) {
       if (incs == 0){
