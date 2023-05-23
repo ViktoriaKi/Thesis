@@ -1,6 +1,0 @@
-MCMC                    (Adaptive) Metropolis Sampler
-MCMC.add.samples        Add samples to an existing chain.
-MCMC.parallel           Parallel computation of MCMC()
-adaptMCMC-package       Generic adaptive Monte Carlo Markov Chain
-                        sampler
-convert.to.coda         Converts chain(s) into 'coda' objects.

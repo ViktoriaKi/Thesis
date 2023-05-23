@@ -1,6 +1,0 @@
-adaptMCMC-package	genericMCMC-package
-adaptMCMC	genericMCMC-package
-convert.to.coda	convert.to.coda
-MCMC	MCMC
-MCMC.add.samples	MCMC.add.samples
-MCMC.parallel	MCMC.parallel
