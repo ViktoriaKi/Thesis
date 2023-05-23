@@ -14,6 +14,7 @@ The code consists of the following:
       - carving_binomial_simulation.R for multicarving with simulated data
       - carving_cloglog.R for multicarving with the misspecified link of Cloglog
       - carving_loanapp.R for multicarving with real data
+      - loanapp_dataCreation.R preprocess data to fit into carving_loanapp.R
 
  - In /plotting/: Various scripts for creating different plots for the thesis.
  - In /tabulation/: Various scripts for tabulating results and calculating performance metrics.
